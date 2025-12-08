@@ -1,7 +1,7 @@
 use relex::TokenKind;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Token {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Terminal {
     // Symbolic tokens.
     At,               // '@'
     Equal,            // '='
@@ -37,11 +37,35 @@ pub enum Token {
     Unrecognized,
 }
 
-impl TokenKind for Token {
+impl TokenKind for Terminal {
     fn eof() -> Self {
-        Token::Eof
+        Terminal::Eof
     }
     fn unrecognized() -> Self {
-        Token::Unrecognized
+        Terminal::Unrecognized
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NonTerminal {
+    // Grammar.
+    Grammar,
+
+    // Directive.
+    Directive,
+    Value,
+    List,
+
+    // EBNF constructs.
+    Rule,
+    Expression,
+    Term,
+    Factor,
+    FactorRepetition,
+    Atom,
+    Group,
+    Optional,
+    Repetition,
+    Lookahead,
+    LookaheadGroup,
 }

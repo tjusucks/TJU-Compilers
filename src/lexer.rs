@@ -1,28 +1,28 @@
-use crate::token::Token;
-use relex::{RecognizerBuilder, Rule, Token as RelexToken};
+use crate::symbol::Terminal;
+use relex::{RecognizerBuilder, Rule, Token};
 
-pub fn tokenize(input: &str) -> Vec<RelexToken<'_, Token>> {
+pub fn tokenize(input: &str) -> Vec<Token<'_, Terminal>> {
     let lexer = RecognizerBuilder::new()
-        .token(Rule::new(Token::At, r"@").unwrap())
-        .token(Rule::new(Token::Equal, r"=").unwrap())
-        .token(Rule::new(Token::Pipe, r"\|").unwrap())
-        .token(Rule::new(Token::LeftBrace, r"\{").unwrap())
-        .token(Rule::new(Token::RightBrace, r"\}").unwrap())
-        .token(Rule::new(Token::LeftBracket, r"\[").unwrap())
-        .token(Rule::new(Token::RightBracket, r"\]").unwrap())
-        .token(Rule::new(Token::LeftParentheses, r"\(").unwrap())
-        .token(Rule::new(Token::RightParentheses, r"\)").unwrap())
-        .token(Rule::new(Token::Comma, r",").unwrap())
-        .token(Rule::new(Token::Tilde, r"~").unwrap())
-        .token(Rule::new(Token::PositiveLookAhead, r"&").unwrap())
-        .token(Rule::new(Token::NegativeLookAhead, r"!").unwrap())
-        .token(Rule::new(Token::PositiveLookBehind, r"<-&").unwrap())
-        .token(Rule::new(Token::NegativeLookBehind, r"<-!").unwrap())
-        .token(Rule::new(Token::Literal, r#""([^"\\]|\\.)*""#).unwrap())
-        .token(Rule::new(Token::Regex, r"/(?:[^/\\]|\\.)*/").unwrap())
-        .token(Rule::new(Token::Identifier, r"[A-Za-z_][A-Za-z_0-9]*").unwrap())
-        .token(Rule::new(Token::Comment, r"#.*").unwrap().skip(true))
-        .token(Rule::new(Token::Whitespace, r"\s+").unwrap().skip(true))
+        .token(Rule::new(Terminal::At, r"@").unwrap())
+        .token(Rule::new(Terminal::Equal, r"=").unwrap())
+        .token(Rule::new(Terminal::Pipe, r"\|").unwrap())
+        .token(Rule::new(Terminal::LeftBrace, r"\{").unwrap())
+        .token(Rule::new(Terminal::RightBrace, r"\}").unwrap())
+        .token(Rule::new(Terminal::LeftBracket, r"\[").unwrap())
+        .token(Rule::new(Terminal::RightBracket, r"\]").unwrap())
+        .token(Rule::new(Terminal::LeftParentheses, r"\(").unwrap())
+        .token(Rule::new(Terminal::RightParentheses, r"\)").unwrap())
+        .token(Rule::new(Terminal::Comma, r",").unwrap())
+        .token(Rule::new(Terminal::Tilde, r"~").unwrap())
+        .token(Rule::new(Terminal::PositiveLookAhead, r"&").unwrap())
+        .token(Rule::new(Terminal::NegativeLookAhead, r"!").unwrap())
+        .token(Rule::new(Terminal::PositiveLookBehind, r"<-&").unwrap())
+        .token(Rule::new(Terminal::NegativeLookBehind, r"<-!").unwrap())
+        .token(Rule::new(Terminal::Literal, r#""([^"\\]|\\.)*""#).unwrap())
+        .token(Rule::new(Terminal::Regex, r"/(?:[^/\\]|\\.)*/").unwrap())
+        .token(Rule::new(Terminal::Identifier, r"[A-Za-z_][A-Za-z_0-9]*").unwrap())
+        .token(Rule::new(Terminal::Comment, r"#.*").unwrap().skip(true))
+        .token(Rule::new(Terminal::Whitespace, r"\s+").unwrap().skip(true))
         .build()
         .into_lexer(input, 0);
 

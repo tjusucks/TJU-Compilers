@@ -1,5 +1,6 @@
 mod lexer;
-mod token;
+mod parser;
+mod symbol;
 
 fn main() {
     // Example EBNF input string.
@@ -63,4 +64,6 @@ fn main() {
     for token in tokens {
         println!("{:?}: {:?}", token.kind, token.text);
     }
+
+    parser::parsing_table();
 }
