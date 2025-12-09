@@ -1,8 +1,9 @@
-use crate::symbol::Terminal;
 use relex::{RecognizerBuilder, Rule, Token};
 
-pub fn tokenize(input: &str) -> Vec<Token<'_, Terminal>> {
-    let lexer = RecognizerBuilder::new()
+use crate::symbol::Terminal;
+
+pub fn tokenize(input: &str) -> impl Iterator<Item = Token<'_, Terminal>> {
+    RecognizerBuilder::new()
         .token(Rule::new(Terminal::At, r"@").unwrap())
         .token(Rule::new(Terminal::Equal, r"=").unwrap())
         .token(Rule::new(Terminal::Pipe, r"\|").unwrap())
@@ -24,11 +25,5 @@ pub fn tokenize(input: &str) -> Vec<Token<'_, Terminal>> {
         .token(Rule::new(Terminal::Comment, r"#.*").unwrap().skip(true))
         .token(Rule::new(Terminal::Whitespace, r"\s+").unwrap().skip(true))
         .build()
-        .into_lexer(input, 0);
-
-    let mut tokens = Vec::new();
-    for token in lexer {
-        tokens.push(token);
-    }
-    tokens
+        .into_lexer(input, 0)
 }

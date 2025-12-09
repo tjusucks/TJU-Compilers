@@ -1,5 +1,7 @@
+use crate::processor::Processor;
+
 mod lexer;
-mod parser;
+mod processor;
 mod symbol;
 
 fn main() {
@@ -57,13 +59,13 @@ fn main() {
         IDENTIFIER  = /[A-Za-z_][A-Za-z_0-9]*/~
         "#;
 
-    // Call the tokenize function from the lexer module.
+    // Tokenize the input string.
     let tokens = lexer::tokenize(input);
 
-    // Print each token's kind and text.
-    for token in tokens {
+    // Process the tokens for lookahead / behind rules.
+    let processed = Processor::process(tokens);
+
+    for token in processed {
         println!("{:?}: {:?}", token.kind, token.text);
     }
-
-    parser::parsing_table();
 }

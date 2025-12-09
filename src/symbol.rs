@@ -27,6 +27,7 @@ pub enum Terminal {
 
     // Identifier, for nonterminal names, directive names, etc.
     Identifier,
+    LeftIdentifier, // Identifier before an equal sign.
 
     // Tokens to be skipped.
     Comment,
@@ -39,10 +40,10 @@ pub enum Terminal {
 
 impl TokenKind for Terminal {
     fn eof() -> Self {
-        Terminal::Eof
+        Self::Eof
     }
     fn unrecognized() -> Self {
-        Terminal::Unrecognized
+        Self::Unrecognized
     }
 }
 
