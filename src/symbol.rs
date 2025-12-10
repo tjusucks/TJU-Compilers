@@ -51,11 +51,13 @@ impl TokenKind for Terminal {
 pub enum NonTerminal {
     // Grammar.
     Grammar,
+    GrammarRepetition,
 
     // Directive.
     Directive,
     Value,
     List,
+    ListRepetition,
 
     // EBNF constructs.
     Rule,

@@ -31,13 +31,15 @@ impl ParserRule {
                 grammar,
                 NonTerminal::Grammar => [
                     Symbol::Nonterminal(NonTerminal::Grammar),
+                    Symbol::Nonterminal(NonTerminal::GrammarRepetition)
+                ],
+                NonTerminal::GrammarRepetition => [
                     Symbol::Nonterminal(NonTerminal::Directive)
                 ],
-                NonTerminal::Grammar => [
-                    Symbol::Nonterminal(NonTerminal::Grammar),
+                NonTerminal::GrammarRepetition => [
                     Symbol::Nonterminal(NonTerminal::Rule)
                 ],
-                NonTerminal::Grammar => []
+                NonTerminal::Grammar => [],
             };
 
             // directive = "@" IDENTIFIER "=" value
@@ -69,13 +71,16 @@ impl ParserRule {
             add_rules! {
                 grammar,
                 NonTerminal::List => [
-                    Symbol::Nonterminal(NonTerminal::List),
+                    Symbol::Terminal(Terminal::Identifier),
+                    Symbol::Nonterminal(NonTerminal::ListRepetition)
+                ],
+                NonTerminal::ListRepetition => [
+                    Symbol::Nonterminal(NonTerminal::ListRepetition),
                     Symbol::Terminal(Terminal::Comma),
                     Symbol::Terminal(Terminal::Identifier)
                 ],
-                NonTerminal::List => [
-                    Symbol::Terminal(Terminal::Identifier)
-                ]
+                NonTerminal::ListRepetition => [
+                ],
             };
 
             // EBNF constructs.

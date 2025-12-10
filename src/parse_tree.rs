@@ -60,6 +60,21 @@ impl ParseTree {
             span,
         }
     }
+
+    pub fn is_terminal(&self, token: Terminal) -> bool {
+        matches!(self, Self::Terminal { token: t, .. } if *t == token)
+    }
+
+    pub fn is_non_terminal(&self, symbol: NonTerminal) -> bool {
+        matches!(self, Self::NonTerminal { symbol: s, .. } if *s == symbol)
+    }
+
+    pub fn collect_children(self) -> Vec<ParseTree> {
+        match self {
+            Self::Terminal { .. } => Vec::new(),
+            Self::NonTerminal { children, .. } => children,
+        }
+    }
 }
 
 impl fmt::Display for ParseTree {

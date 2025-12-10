@@ -41,7 +41,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut state_stack = vec![0];
-        let mut node_stack = vec![];
+        let mut node_stack: Vec<ParseTree> = vec![];
         let mut token = iterator.next().unwrap();
         loop {
             let state = *state_stack.last().unwrap();
@@ -52,23 +52,58 @@ impl<'a> Parser<'a> {
             };
             match action {
                 Some(LRAction::Reduce(non_terminal, rhs)) => {
-                    let mut children = Vec::with_capacity(rhs.syms.len());
-                    for _ in 0..rhs.syms.len() {
-                        if let Some(child) = node_stack.pop() {
-                            children.push(child);
-                        }
+                    let length = rhs.syms.len();
+                    for _ in 0..length {
                         state_stack.pop();
                     }
-                    children.reverse();
                     let state = *state_stack.last().unwrap();
                     let next_state = parser.parse_table.states[state]
                         .goto
                         .get(non_terminal)
                         .unwrap();
-                    let new_node =
-                        ParseTree::non_terminal(**non_terminal, children, Span::new(0, 0, 1, 1));
+
                     state_stack.push(*next_state);
-                    node_stack.push(new_node);
+
+                    match **non_terminal {
+                        NonTerminal::Grammar
+                        | NonTerminal::GrammarRepetition
+                        | NonTerminal::Value => {}
+                        NonTerminal::ListRepetition => {
+                            let mut children = Vec::with_capacity(rhs.syms.len());
+                            for _ in 0..length {
+                                if let Some(child) = node_stack.pop() {
+                                    if child.is_non_terminal(NonTerminal::ListRepetition) {
+                                        children.reverse();
+                                        children.extend(child.collect_children());
+                                        break;
+                                    } else {
+                                        children.push(child);
+                                    }
+                                }
+                            }
+                            let new_node = ParseTree::non_terminal(
+                                **non_terminal,
+                                children,
+                                Span::new(0, 0, 1, 1),
+                            );
+                            node_stack.push(new_node);
+                        }
+                        _ => {
+                            let mut children = Vec::with_capacity(rhs.syms.len());
+                            for _ in 0..length {
+                                if let Some(child) = node_stack.pop() {
+                                    children.push(child);
+                                }
+                            }
+                            children.reverse();
+                            let new_node = ParseTree::non_terminal(
+                                **non_terminal,
+                                children,
+                                Span::new(0, 0, 1, 1),
+                            );
+                            node_stack.push(new_node);
+                        }
+                    }
                 }
                 Some(LRAction::Shift(next_state)) => {
                     let new_node = ParseTree::terminal(
