@@ -61,6 +61,13 @@ impl ParseTree {
         }
     }
 
+    pub const fn is_empty(&self) -> bool {
+        match self {
+            Self::Terminal { .. } => true,
+            Self::NonTerminal { children, .. } => children.is_empty(),
+        }
+    }
+
     pub fn is_terminal(&self, token: Terminal) -> bool {
         matches!(self, Self::Terminal { token: t, .. } if *t == token)
     }
@@ -69,7 +76,7 @@ impl ParseTree {
         matches!(self, Self::NonTerminal { symbol: s, .. } if *s == symbol)
     }
 
-    pub fn collect_children(self) -> Vec<ParseTree> {
+    pub fn collect_children(self) -> Vec<Self> {
         match self {
             Self::Terminal { .. } => Vec::new(),
             Self::NonTerminal { children, .. } => children,
@@ -83,16 +90,16 @@ impl fmt::Display for ParseTree {
             let pad = "  ".repeat(indent);
             match node {
                 ParseTree::Terminal { token, lexeme, .. } => {
-                    writeln!(fmt, "{}({:?} \"{}\")", pad, token, lexeme)
+                    writeln!(fmt, "{pad}({token:?} \"{lexeme}\")")
                 }
                 ParseTree::NonTerminal {
                     symbol, children, ..
                 } => {
-                    writeln!(fmt, "{}({:?}", pad, symbol)?;
+                    writeln!(fmt, "{pad}({symbol:?}")?;
                     for child in children {
                         fmt_sexpr(child, fmt, indent + 1)?;
                     }
-                    writeln!(fmt, "{})", pad)
+                    writeln!(fmt, "{pad})")
                 }
             }
         }

@@ -67,8 +67,9 @@ impl<'a> Parser<'a> {
                     match **non_terminal {
                         NonTerminal::Grammar
                         | NonTerminal::GrammarRepetition
-                        | NonTerminal::ListRepetition
                         | NonTerminal::Value
+                        | NonTerminal::ListRepetition
+                        | NonTerminal::Atom
                         | NonTerminal::ExpressionRepetition
                         | NonTerminal::TermRepetition => {}
                         NonTerminal::List
@@ -96,7 +97,10 @@ impl<'a> Parser<'a> {
                         _ => {
                             let mut children = Vec::with_capacity(rhs.syms.len());
                             for _ in 0..length {
-                                if let Some(child) = node_stack.pop() {
+                                if let Some(child) = node_stack.pop()
+                                    && (!child.is_non_terminal(NonTerminal::FactorRepetition)
+                                        || !child.is_empty())
+                                {
                                     children.push(child);
                                 }
                             }
