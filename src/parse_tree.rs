@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::symbol::{NonTerminal, Terminal};
 
 /// Source location information.
@@ -58,29 +60,27 @@ impl ParseTree {
             span,
         }
     }
+}
 
-    /// Get the span of this node.
-    pub const fn span(&self) -> Span {
-        match self {
-            Self::Terminal { span, .. } | Self::NonTerminal { span, .. } => *span,
-        }
-    }
-
-    /// Get all terminal tokens in order (for reconstructing source).
-    pub fn terminals(&self) -> Vec<&Self> {
-        let mut result = Vec::new();
-        self.collect_terminals(&mut result);
-        result
-    }
-
-    fn collect_terminals<'a>(&'a self, result: &mut Vec<&'a Self>) {
-        match self {
-            Self::Terminal { .. } => result.push(self),
-            Self::NonTerminal { children, .. } => {
-                for child in children {
-                    child.collect_terminals(result);
+impl fmt::Display for ParseTree {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt_sexpr(node: &ParseTree, fmt: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+            let pad = "  ".repeat(indent);
+            match node {
+                ParseTree::Terminal { token, lexeme, .. } => {
+                    writeln!(fmt, "{}({:?} \"{}\")", pad, token, lexeme)
+                }
+                ParseTree::NonTerminal {
+                    symbol, children, ..
+                } => {
+                    writeln!(fmt, "{}({:?}", pad, symbol)?;
+                    for child in children {
+                        fmt_sexpr(child, fmt, indent + 1)?;
+                    }
+                    writeln!(fmt, "{})", pad)
                 }
             }
         }
+        fmt_sexpr(self, fmt, 0)
     }
 }

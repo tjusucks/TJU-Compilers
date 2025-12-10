@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse<I>(iterator: I) -> Result<ParseTree, ParseError>
+    pub fn parse<I>(mut iterator: I) -> Result<ParseTree, ParseError>
     where
         I: Iterator<Item = Token<'a, Terminal>>,
     {
@@ -39,27 +39,17 @@ impl<'a> Parser<'a> {
         for (state_id, state) in parser.parse_table.states.iter().enumerate() {
             println!("State {state_id}: {state:?}");
         }
-        println!();
-
-        let input = iterator.collect::<Vec<_>>();
-
-        for token in &input {
-            println!("Token: {token:?}");
-        }
 
         let mut state_stack = vec![0];
-        let mut node_stack = vec![ParseTree::non_terminal(
-            NonTerminal::Grammar,
-            vec![],
-            Span::new(0, 0, 1, 1),
-        )];
-        let mut input_position = 0;
+        let mut node_stack = vec![];
+        let mut token = iterator.next().unwrap();
         loop {
             let state = *state_stack.last().unwrap();
-            let terminal = &input[input_position];
-            let action = parser.parse_table.states[state]
-                .lookahead
-                .get(&terminal.kind);
+            let action = if token.kind == Terminal::Eof {
+                parser.parse_table.states[state].eof.as_ref()
+            } else {
+                parser.parse_table.states[state].lookahead.get(&token.kind)
+            };
             match action {
                 Some(LRAction::Reduce(non_terminal, rhs)) => {
                     let mut children = Vec::with_capacity(rhs.syms.len());
@@ -82,25 +72,25 @@ impl<'a> Parser<'a> {
                 }
                 Some(LRAction::Shift(next_state)) => {
                     let new_node = ParseTree::terminal(
-                        terminal.kind,
-                        terminal.text.to_string(),
+                        token.kind,
+                        token.text.to_string(),
                         Span::new(0, 0, 1, 1),
                     );
                     state_stack.push(*next_state);
                     node_stack.push(new_node);
-                    input_position += 1;
+                    token = iterator.next().unwrap();
                 }
                 Some(LRAction::Accept) => {
                     break;
                 }
                 _ => panic!(
                     "Failed to get action for state {} and token {:?}",
-                    state, terminal.kind
+                    state, token.kind
                 ),
             }
         }
-
-        let root = node_stack.pop().expect("Node stack is empty.");
+        let children = std::mem::take(&mut node_stack);
+        let root = ParseTree::non_terminal(NonTerminal::Grammar, children, Span::new(0, 0, 1, 1));
         Ok(root)
     }
 }
