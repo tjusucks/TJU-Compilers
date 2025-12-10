@@ -1,6 +1,11 @@
+use crate::lexer::Lexer;
+use crate::parser::Parser;
 use crate::processor::Processor;
 
 mod lexer;
+mod parse_tree;
+mod parser;
+mod parser_rule;
 mod processor;
 mod symbol;
 
@@ -59,13 +64,15 @@ fn main() {
         IDENTIFIER  = /[A-Za-z_][A-Za-z_0-9]*/~
         "#;
 
+    let test_input = "A = foo bar";
+
     // Tokenize the input string.
-    let tokens = lexer::tokenize(input);
+    let tokens = Lexer::tokenize(test_input);
 
     // Process the tokens for lookahead / behind rules.
     let processed = Processor::process(tokens);
 
-    for token in processed {
-        println!("{:?}: {:?}", token.kind, token.text);
-    }
+    // Parse the processed tokens.
+    let tree = Parser::parse(processed);
+    println!("{tree:?}");
 }

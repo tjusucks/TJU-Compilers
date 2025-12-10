@@ -1,238 +1,106 @@
-use lalr::{Grammar, Rhs, Symbol};
+use lalr::{Grammar, LR1ParseTable, LRAction, Rhs};
+use relex::Token;
 
+use crate::parse_tree::{ParseError, ParseTree, Span};
+use crate::parser_rule::ParserRule;
 use crate::symbol::{NonTerminal, Terminal};
 
-macro_rules! add_rules {
-    ($grammar:expr, $($lhs:expr => [$($rhs:expr),*]),* $(,)?) => {
-        $(
-            $grammar.rules.entry($lhs).or_default().push(Rhs {
-                syms: vec![$($rhs),*],
-                act: (),
-            });
-        )*
-    };
+pub struct Parser<'a> {
+    parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
 }
 
-pub fn parsing_table() {
-    let mut grammar: Grammar<Terminal, NonTerminal, ()> = Grammar {
-        rules: std::collections::BTreeMap::new(),
-        start: NonTerminal::Grammar,
-    };
-
-    // grammar = { directive | rule }
-    add_rules! {
-        grammar,
-        NonTerminal::Grammar => [
-            Symbol::Nonterminal(NonTerminal::Grammar),
-            Symbol::Nonterminal(NonTerminal::Directive)
-        ],
-        NonTerminal::Grammar => [
-            Symbol::Nonterminal(NonTerminal::Grammar),
-            Symbol::Nonterminal(NonTerminal::Rule)
-        ],
-        NonTerminal::Grammar => []
-    };
-
-    // directive = "@" IDENTIFIER "=" value
-    add_rules! {
-        grammar,
-        NonTerminal::Directive => [
-            Symbol::Terminal(Terminal::At),
-            Symbol::Terminal(Terminal::Identifier),
-            Symbol::Terminal(Terminal::Equal),
-            Symbol::Nonterminal(NonTerminal::Value)
-        ],
-    };
-
-    // value = LITERAL | REGEX | list
-    add_rules! {
-        grammar,
-        NonTerminal::Value => [
-            Symbol::Terminal(Terminal::Literal)
-        ],
-        NonTerminal::Value => [
-            Symbol::Terminal(Terminal::Regex)
-        ],
-        NonTerminal::Value => [
-            Symbol::Nonterminal(NonTerminal::List)
-        ],
-    };
-
-    // list = IDENTIFIER { "," IDENTIFIER }
-    add_rules! {
-        grammar,
-        NonTerminal::List => [
-            Symbol::Nonterminal(NonTerminal::List),
-            Symbol::Terminal(Terminal::Comma),
-            Symbol::Terminal(Terminal::Identifier)
-        ],
-        NonTerminal::List => [
-            Symbol::Terminal(Terminal::Identifier)
-        ]
-    };
-
-    // EBNF constructs.
-    // rule = IDENTIFIER "=" expression
-    add_rules! {
-        grammar,
-        NonTerminal::Rule => [
-            Symbol::Terminal(Terminal::Identifier),
-            Symbol::Terminal(Terminal::Equal),
-            Symbol::Nonterminal(NonTerminal::Expression)
-        ],
-    };
-
-    // expression = term { "|" term }
-    add_rules! {
-        grammar,
-        NonTerminal::Expression => [
-            Symbol::Nonterminal(NonTerminal::Expression),
-            Symbol::Terminal(Terminal::Pipe),
-            Symbol::Nonterminal(NonTerminal::Term)
-        ],
-        NonTerminal::Expression => [
-            Symbol::Nonterminal(NonTerminal::Term)
-        ],
-    };
-
-    // term = factor { factor }
-    add_rules! {
-        grammar,
-        NonTerminal::Term => [
-            Symbol::Nonterminal(NonTerminal::Term),
-            Symbol::Nonterminal(NonTerminal::Factor)
-        ],
-        NonTerminal::Term => [
-            Symbol::Nonterminal(NonTerminal::Factor)
-        ],
-    };
-
-    // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
-    add_rules! {
-        grammar,
-        NonTerminal::Factor => [
-            Symbol::Nonterminal(NonTerminal::FactorRepetition),
-            Symbol::Nonterminal(NonTerminal::Atom),
-            Symbol::Nonterminal(NonTerminal::FactorRepetition),
-            Symbol::Nonterminal(NonTerminal::Lookahead)
-        ],
-        NonTerminal::Factor => [
-            Symbol::Nonterminal(NonTerminal::FactorRepetition),
-            Symbol::Nonterminal(NonTerminal::Atom),
-            Symbol::Nonterminal(NonTerminal::FactorRepetition)
-        ],
-        NonTerminal::FactorRepetition => [
-            Symbol::Nonterminal(NonTerminal::FactorRepetition),
-            Symbol::Terminal(Terminal::Tilde)
-        ],
-        NonTerminal::FactorRepetition => [],
-    };
-
-    // atom = LITERAL | IDENTIFIER ! "=" | REGEX | group | optional | repetition
-    add_rules! {
-        grammar,
-        NonTerminal::Atom => [
-            Symbol::Terminal(Terminal::Literal)
-        ],
-        NonTerminal::Atom => [
-            Symbol::Terminal(Terminal::Identifier)
-        ],
-        NonTerminal::Atom => [
-            Symbol::Terminal(Terminal::Regex)
-        ],
-        NonTerminal::Atom => [
-            Symbol::Nonterminal(NonTerminal::Group)
-        ],
-        NonTerminal::Atom => [
-            Symbol::Nonterminal(NonTerminal::Optional)
-        ],
-        NonTerminal::Atom => [
-            Symbol::Nonterminal(NonTerminal::Repetition)
-        ],
-    };
-
-    // group = "(" expression ")"
-    add_rules! {
-        grammar,
-        NonTerminal::Group => [
-            Symbol::Terminal(Terminal::LeftParentheses),
-            Symbol::Nonterminal(NonTerminal::Expression),
-            Symbol::Terminal(Terminal::RightParentheses)
-        ],
-    };
-
-    // optional = "[" expression "]"
-    add_rules! {
-        grammar,
-        NonTerminal::Optional => [
-            Symbol::Terminal(Terminal::LeftBracket),
-            Symbol::Nonterminal(NonTerminal::Expression),
-            Symbol::Terminal(Terminal::RightBracket)
-        ],
-    };
-
-    // repetition = "{" expression "}"
-    add_rules! {
-        grammar,
-        NonTerminal::Repetition => [
-            Symbol::Terminal(Terminal::LeftBrace),
-            Symbol::Nonterminal(NonTerminal::Expression),
-            Symbol::Terminal(Terminal::RightBrace)
-        ],
-    };
-
-    // lookahead = (POSITIVE_LOOKAHEAD | NEGATIVE_LOOKAHEAD | POSITIVE_LOOKBEHIND | NEGATIVE_LOOKBEHIND) factor
-    add_rules! {
-        grammar,
-        NonTerminal::Lookahead => [
-            Symbol::Nonterminal(NonTerminal::LookaheadGroup),
-            Symbol::Nonterminal(NonTerminal::Factor)
-        ],
-        NonTerminal::LookaheadGroup => [
-            Symbol::Terminal(Terminal::PositiveLookAhead)
-        ],
-        NonTerminal::LookaheadGroup => [
-            Symbol::Terminal(Terminal::NegativeLookAhead)
-        ],
-        NonTerminal::LookaheadGroup => [
-            Symbol::Terminal(Terminal::PositiveLookBehind)
-        ],
-        NonTerminal::LookaheadGroup => [
-            Symbol::Terminal(Terminal::NegativeLookBehind)
-        ],
-    };
-
-    let reduce_on = |rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Terminal>| -> bool {
-        match (&rhs.syms[..], lookahead) {
-            // Don't reduce FactorRepetition -> [], prefer to shift.
-            ([], Some(Terminal::Identifier)) => false,
-
-            // Greedy whitespace consumption.
-            // Don't reduce Factor, prefer to shift and extend FactorRepetition.
-            (
-                [
-                    Symbol::Nonterminal(NonTerminal::FactorRepetition),
-                    Symbol::Nonterminal(NonTerminal::Atom),
-                    Symbol::Nonterminal(NonTerminal::FactorRepetition),
-                ],
-                Some(Terminal::Tilde),
-            ) => false,
-            _ => true,
+impl<'a> Parser<'a> {
+    pub fn new<ReduceFn, PriorityFn>(
+        grammar: &'a Grammar<Terminal, NonTerminal, ()>,
+        reduce_on: ReduceFn,
+        priority_of: PriorityFn,
+    ) -> Self
+    where
+        ReduceFn: FnMut(&Rhs<Terminal, NonTerminal, ()>, Option<&Terminal>) -> bool,
+        PriorityFn: FnMut(&Rhs<Terminal, NonTerminal, ()>, Option<&Terminal>) -> i32,
+    {
+        match grammar.lalr1(reduce_on, priority_of) {
+            Ok(parse_table) => Self { parse_table },
+            Err(conflict) => panic!("Grammar is not LALR(1), conflict detected: {conflict:?}"),
         }
-    };
+    }
 
-    let priority_of =
-        |_rhs: &Rhs<Terminal, NonTerminal, ()>, _lookahead: Option<&Terminal>| -> i32 { 0 };
+    pub fn parse<I>(iterator: I) -> Result<ParseTree, ParseError>
+    where
+        I: Iterator<Item = Token<'a, Terminal>>,
+    {
+        let parser = Parser::new(
+            ParserRule::grammar(),
+            ParserRule::reduce_on,
+            ParserRule::priority_of,
+        );
 
-    match grammar.lalr1(reduce_on, priority_of) {
-        Ok(parse_table) => {
-            println!("LALR(1) parse table built successfully!");
-            for (state_id, state) in parse_table.states.iter().enumerate() {
-                println!("State {}: {:?}", state_id, state);
+        println!("LALR(1) parse table built successfully!");
+        for (state_id, state) in parser.parse_table.states.iter().enumerate() {
+            println!("State {state_id}: {state:?}");
+        }
+        println!();
+
+        let input = iterator.collect::<Vec<_>>();
+
+        for token in &input {
+            println!("Token: {token:?}");
+        }
+
+        let mut state_stack = vec![0];
+        let mut node_stack = vec![ParseTree::non_terminal(
+            NonTerminal::Grammar,
+            vec![],
+            Span::new(0, 0, 1, 1),
+        )];
+        let mut input_position = 0;
+        loop {
+            let state = *state_stack.last().unwrap();
+            let terminal = &input[input_position];
+            let action = parser.parse_table.states[state]
+                .lookahead
+                .get(&terminal.kind);
+            match action {
+                Some(LRAction::Reduce(non_terminal, rhs)) => {
+                    let mut children = Vec::with_capacity(rhs.syms.len());
+                    for _ in 0..rhs.syms.len() {
+                        if let Some(child) = node_stack.pop() {
+                            children.push(child);
+                        }
+                        state_stack.pop();
+                    }
+                    children.reverse();
+                    let state = *state_stack.last().unwrap();
+                    let next_state = parser.parse_table.states[state]
+                        .goto
+                        .get(non_terminal)
+                        .unwrap();
+                    let new_node =
+                        ParseTree::non_terminal(**non_terminal, children, Span::new(0, 0, 1, 1));
+                    state_stack.push(*next_state);
+                    node_stack.push(new_node);
+                }
+                Some(LRAction::Shift(next_state)) => {
+                    let new_node = ParseTree::terminal(
+                        terminal.kind,
+                        terminal.text.to_string(),
+                        Span::new(0, 0, 1, 1),
+                    );
+                    state_stack.push(*next_state);
+                    node_stack.push(new_node);
+                    input_position += 1;
+                }
+                Some(LRAction::Accept) => {
+                    break;
+                }
+                _ => panic!(
+                    "Failed to get action for state {} and token {:?}",
+                    state, terminal.kind
+                ),
             }
         }
-        Err(conflict) => {
-            println!("LALR(1) conflicts detected: {:?}.", conflict);
-        }
+
+        let root = node_stack.pop().expect("Node stack is empty.");
+        Ok(root)
     }
 }
