@@ -70,17 +70,17 @@ impl ParserRule {
             // list = IDENTIFIER { "," IDENTIFIER }
             add_rules! {
                 grammar,
-                NonTerminal::List => [
-                    Symbol::Terminal(Terminal::Identifier),
-                    Symbol::Nonterminal(NonTerminal::ListRepetition)
-                ],
                 NonTerminal::ListRepetition => [
-                    Symbol::Nonterminal(NonTerminal::ListRepetition),
+                    Symbol::Nonterminal(NonTerminal::List)
+                ],
+                NonTerminal::List => [
+                    Symbol::Nonterminal(NonTerminal::List),
                     Symbol::Terminal(Terminal::Comma),
                     Symbol::Terminal(Terminal::Identifier)
                 ],
-                NonTerminal::ListRepetition => [
-                ],
+                NonTerminal::List => [
+                    Symbol::Terminal(Terminal::Identifier)
+                ]
             };
 
             // EBNF constructs.
@@ -97,6 +97,9 @@ impl ParserRule {
             // expression = term { "|" term }
             add_rules! {
                 grammar,
+                NonTerminal::ExpressionRepetition => [
+                    Symbol::Nonterminal(NonTerminal::Expression)
+                ],
                 NonTerminal::Expression => [
                     Symbol::Nonterminal(NonTerminal::Expression),
                     Symbol::Terminal(Terminal::Pipe),
@@ -110,6 +113,9 @@ impl ParserRule {
             // term = factor { factor }
             add_rules! {
                 grammar,
+                NonTerminal::TermRepetition => [
+                    Symbol::Nonterminal(NonTerminal::Term)
+                ],
                 NonTerminal::Term => [
                     Symbol::Nonterminal(NonTerminal::Term),
                     Symbol::Nonterminal(NonTerminal::Factor)

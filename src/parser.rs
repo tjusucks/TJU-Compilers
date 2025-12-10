@@ -67,20 +67,25 @@ impl<'a> Parser<'a> {
                     match **non_terminal {
                         NonTerminal::Grammar
                         | NonTerminal::GrammarRepetition
-                        | NonTerminal::Value => {}
-                        NonTerminal::ListRepetition => {
+                        | NonTerminal::ListRepetition
+                        | NonTerminal::Value
+                        | NonTerminal::ExpressionRepetition
+                        | NonTerminal::TermRepetition => {}
+                        NonTerminal::List
+                        | NonTerminal::Expression
+                        | NonTerminal::Term
+                        | NonTerminal::FactorRepetition => {
                             let mut children = Vec::with_capacity(rhs.syms.len());
                             for _ in 0..length {
                                 if let Some(child) = node_stack.pop() {
-                                    if child.is_non_terminal(NonTerminal::ListRepetition) {
-                                        children.reverse();
-                                        children.extend(child.collect_children());
-                                        break;
+                                    if child.is_non_terminal(**non_terminal) {
+                                        children.extend(child.collect_children().into_iter().rev());
                                     } else {
                                         children.push(child);
                                     }
                                 }
                             }
+                            children.reverse();
                             let new_node = ParseTree::non_terminal(
                                 **non_terminal,
                                 children,

@@ -62,7 +62,9 @@ pub enum NonTerminal {
     // EBNF constructs.
     Rule,
     Expression,
+    ExpressionRepetition,
     Term,
+    TermRepetition,
     Factor,
     FactorRepetition,
     Atom,
