@@ -1,12 +1,15 @@
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use crate::parser_config::ParserConfig;
 use crate::processor::Processor;
+use crate::semantic_action::DefaultAction;
 
 mod lexer;
 mod parse_tree;
 mod parser;
-mod parser_rule;
+mod parser_config;
 mod processor;
+mod semantic_action;
 mod symbol;
 
 fn main() {
@@ -71,6 +74,12 @@ fn main() {
     let processed = Processor::process(tokens);
 
     // Parse the processed tokens.
-    let tree = Parser::parse(processed).unwrap();
+    let mut parser = Parser::new(
+        ParserConfig::grammar(),
+        ParserConfig::reduce_on,
+        ParserConfig::priority_of,
+        DefaultAction,
+    );
+    let tree = parser.parse(processed).unwrap();
     println!("{tree}");
 }

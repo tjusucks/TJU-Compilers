@@ -4,7 +4,7 @@ use lalr::{Grammar, Rhs, Symbol};
 
 use crate::symbol::{NonTerminal, Terminal};
 
-pub struct ParserRule;
+pub struct ParserConfig;
 
 macro_rules! add_rules {
     ($grammar:expr, $($lhs:expr => [$($rhs:expr),*]),* $(,)?) => {
@@ -17,7 +17,7 @@ macro_rules! add_rules {
     };
 }
 
-impl ParserRule {
+impl ParserConfig {
     pub fn grammar() -> &'static Grammar<Terminal, NonTerminal, ()> {
         static GRAMMAR: OnceLock<Grammar<Terminal, NonTerminal, ()>> = OnceLock::new();
         GRAMMAR.get_or_init(|| {
