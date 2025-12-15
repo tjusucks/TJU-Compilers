@@ -78,7 +78,7 @@ fn main() {
         ParserConfig::grammar(),
         ParserConfig::reduce_on,
         ParserConfig::priority_of,
-        DefaultAction,
+        DefaultAction::new(),
     );
     let tree = parser.parse(processed).unwrap();
     println!("{tree}");

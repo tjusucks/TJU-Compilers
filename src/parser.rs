@@ -1,7 +1,6 @@
 use lalr::{Grammar, LR1ParseTable, LRAction, Rhs};
 use relex::Token;
 
-use crate::parse_tree::{ParseError, ParseTree, Span};
 use crate::semantic_action::SemanticAction;
 use crate::symbol::{NonTerminal, Terminal};
 
@@ -33,13 +32,12 @@ where
         }
     }
 
-    pub fn parse<I>(&mut self, mut iterator: I) -> Result<ParseTree, ParseError>
+    pub fn parse<I>(&mut self, mut iterator: I) -> Result<Action::ParseResult, Action::ParseError>
     where
         I: Iterator<Item = Token<'a, Terminal>>,
     {
         let parse_table = &self.parse_table;
         let mut state_stack = vec![0];
-        let mut node_stack: Vec<ParseTree> = vec![];
         let mut token = iterator.next().unwrap();
 
         loop {
@@ -58,21 +56,15 @@ where
                     let state = *state_stack.last().unwrap();
                     let next_state = parse_table.states[state].goto.get(non_terminal).unwrap();
                     state_stack.push(*next_state);
-                    self.semantic_action
-                        .on_reduce(**non_terminal, rhs, &mut node_stack);
+                    self.semantic_action.on_reduce(**non_terminal, rhs);
                 }
                 Some(LRAction::Shift(next_state)) => {
-                    let new_node = ParseTree::terminal(
-                        token.kind,
-                        token.text.to_string(),
-                        Span::new(0, 0, 1, 1),
-                    );
                     state_stack.push(*next_state);
-                    node_stack.push(new_node);
+                    self.semantic_action.on_shift(token);
                     token = iterator.next().unwrap();
                 }
                 Some(LRAction::Accept) => {
-                    break;
+                    return Ok(self.semantic_action.on_accept());
                 }
                 _ => panic!(
                     "Failed to get action for state {} and token {:?}",
@@ -80,8 +72,5 @@ where
                 ),
             }
         }
-        let children = std::mem::take(&mut node_stack);
-        let root = ParseTree::non_terminal(NonTerminal::Grammar, children, Span::new(0, 0, 1, 1));
-        Ok(root)
     }
 }

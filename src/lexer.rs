@@ -32,7 +32,6 @@ impl Lexer {
             .token(Rule::new(Terminal::Comment, r"#.*").unwrap().skip(true))
             .token(Rule::new(Terminal::Whitespace, r"\s+").unwrap().skip(true))
             .build();
-
         Self { recognizer }
     }
 
