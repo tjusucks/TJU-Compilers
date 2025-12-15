@@ -1,38 +1,29 @@
-use lalr::{Grammar, LR1ParseTable, LRAction, Rhs};
-use relex::Token;
+use lalr::{LR1ParseTable, LRAction};
+use relex::{Token, TokenKind};
 
-use crate::semantic_action::SemanticAction;
-use crate::symbol::{NonTerminal, Terminal};
+use crate::common::action::Action;
+use crate::common::symbol_table::{NonTerminal, Terminal};
 
-pub struct Parser<'a, SemanticAction> {
+pub struct Parser<'a, Action> {
     parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
-    semantic_action: SemanticAction,
+    semantic_action: Action,
 }
 
-impl<'a, Action> Parser<'a, Action>
+impl<'a, A> Parser<'a, A>
 where
-    Action: SemanticAction,
+    A: Action,
 {
-    pub fn new<ReduceFn, PriorityFn>(
-        grammar: &'a Grammar<Terminal, NonTerminal, ()>,
-        reduce_on: ReduceFn,
-        priority_of: PriorityFn,
-        semantic_action: Action,
-    ) -> Self
-    where
-        ReduceFn: FnMut(&Rhs<Terminal, NonTerminal, ()>, Option<&Terminal>) -> bool,
-        PriorityFn: FnMut(&Rhs<Terminal, NonTerminal, ()>, Option<&Terminal>) -> i32,
-    {
-        match grammar.lalr1(reduce_on, priority_of) {
-            Ok(parse_table) => Self {
-                parse_table,
-                semantic_action,
-            },
-            Err(conflict) => panic!("Grammar is not LALR(1), conflict detected: {conflict:?}"),
+    pub fn new(
+        parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
+        semantic_action: A,
+    ) -> Self {
+        Self {
+            parse_table,
+            semantic_action,
         }
     }
 
-    pub fn parse<I>(&mut self, mut iterator: I) -> Result<Action::ParseResult, Action::ParseError>
+    pub fn parse<I>(&mut self, mut iterator: I) -> Result<A::ParseResult, A::ParseError>
     where
         I: Iterator<Item = Token<'a, Terminal>>,
     {
@@ -42,7 +33,7 @@ where
 
         loop {
             let state = *state_stack.last().unwrap();
-            let action = if token.kind == Terminal::Eof {
+            let action = if token.kind.is_eof() {
                 parse_table.states[state].eof.as_ref()
             } else {
                 parse_table.states[state].lookahead.get(&token.kind)

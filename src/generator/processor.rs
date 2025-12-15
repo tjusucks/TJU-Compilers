@@ -1,6 +1,7 @@
 use relex::Token;
 
-use crate::symbol::Terminal;
+use crate::common::symbol_table::Terminal;
+use crate::generator::symbol_table::symbol_table;
 
 pub struct Processor<I: Iterator<Item = Token<'static, Terminal>>> {
     iterator: I,
@@ -20,13 +21,14 @@ impl<I: Iterator<Item = Token<'static, Terminal>>> Processor<I> {
 impl<I: Iterator<Item = Token<'static, Terminal>>> Iterator for Processor<I> {
     type Item = Token<'static, Terminal>;
     fn next(&mut self) -> Option<Self::Item> {
+        let table = symbol_table();
         let curr = self.iterator.next();
         if let Some(mut previous_token) = self.previous_token.take() {
             if let Some(ref current_token) = curr
-                && current_token.kind == Terminal::Equal
-                && previous_token.kind == Terminal::Identifier
+                && current_token.kind == table.get_terminal_id("Equal").unwrap()
+                && previous_token.kind == table.get_terminal_id("Identifier").unwrap()
             {
-                previous_token.kind = Terminal::LeftIdentifier;
+                previous_token.kind = table.get_terminal_id("LeftIdentifier").unwrap();
             }
             self.previous_token = curr;
             Some(previous_token)

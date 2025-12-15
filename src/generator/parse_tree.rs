@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::symbol::{NonTerminal, Terminal};
+use crate::common::symbol_table::{NonTerminal, Terminal};
 
 /// Source location information.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,23 +86,37 @@ impl ParseTree {
 
 impl fmt::Display for ParseTree {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn fmt_sexpr(node: &ParseTree, fmt: &mut fmt::Formatter<'_>, indent: usize) -> fmt::Result {
+        use crate::generator::symbol_table::symbol_table;
+        let table = symbol_table();
+
+        fn fmt_sexpr(
+            node: &ParseTree,
+            fmt: &mut fmt::Formatter<'_>,
+            indent: usize,
+            table: &crate::common::symbol_table::SymbolTable,
+        ) -> fmt::Result {
             let pad = "  ".repeat(indent);
             match node {
                 ParseTree::Terminal { token, lexeme, .. } => {
-                    writeln!(fmt, "{pad}({token:?} \"{lexeme}\")")
+                    let terminal_name = table
+                        .get_terminal_name(*token)
+                        .unwrap_or("UNKNOWN_TERMINAL");
+                    writeln!(fmt, "{pad}({terminal_name} \"{lexeme}\")")
                 }
                 ParseTree::NonTerminal {
                     symbol, children, ..
                 } => {
-                    writeln!(fmt, "{pad}({symbol:?}")?;
+                    let nonterminal_name = table
+                        .get_non_terminal_name(*symbol)
+                        .unwrap_or("UNKNOWN_NONTERMINAL");
+                    writeln!(fmt, "{pad}({nonterminal_name}")?;
                     for child in children {
-                        fmt_sexpr(child, fmt, indent + 1)?;
+                        fmt_sexpr(child, fmt, indent + 1, table)?;
                     }
                     writeln!(fmt, "{pad})")
                 }
             }
         }
-        fmt_sexpr(self, fmt, 0)
+        fmt_sexpr(self, fmt, 0, table)
     }
 }

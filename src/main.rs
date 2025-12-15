@@ -1,16 +1,13 @@
-use crate::lexer::Lexer;
-use crate::parser::Parser;
-use crate::parser_config::ParserConfig;
-use crate::processor::Processor;
-use crate::semantic_action::DefaultAction;
+use crate::compiler::lexer::Lexer;
+use crate::compiler::parser::Parser;
+use crate::generator::action::ParseTreeAction;
+use crate::generator::grammar::{grammar, priority_of, reduce_on};
+use crate::generator::processor::Processor;
+use crate::generator::token_rules::token_rules;
 
-mod lexer;
-mod parse_tree;
-mod parser;
-mod parser_config;
-mod processor;
-mod semantic_action;
-mod symbol;
+mod common;
+mod compiler;
+mod generator;
 
 fn main() {
     // Example EBNF input string.
@@ -67,19 +64,20 @@ fn main() {
         IDENTIFIER  = /[A-Za-z_][A-Za-z_0-9]*/~
         "#;
 
-    // Tokenize the input string.
-    let tokens = Lexer::tokenize(input);
+    let token_rules = token_rules();
+    let lexer = Lexer::new(token_rules);
+    let grammar = grammar();
+    let parse_table = match grammar.lalr1(reduce_on, priority_of) {
+        Ok(parse_table) => parse_table,
+        Err(conflict) => {
+            panic!("Grammar is not LALR(1), conflict detected: {conflict:?}");
+        }
+    };
+    let mut parser = Parser::new(parse_table, ParseTreeAction::new());
 
-    // Process the tokens for lookahead / behind rules.
+    let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
+    let result = parser.parse(processed).unwrap();
 
-    // Parse the processed tokens.
-    let mut parser = Parser::new(
-        ParserConfig::grammar(),
-        ParserConfig::reduce_on,
-        ParserConfig::priority_of,
-        DefaultAction::new(),
-    );
-    let tree = parser.parse(processed).unwrap();
-    println!("{tree}");
+    println!("{result}");
 }
