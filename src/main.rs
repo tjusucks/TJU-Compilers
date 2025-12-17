@@ -1,7 +1,8 @@
+use crate::common::parse_table::ParseTable;
 use crate::compiler::lexer::Lexer;
 use crate::compiler::parser::Parser;
 use crate::generator::action::ParseTreeAction;
-use crate::generator::grammar::{grammar, priority_of, reduce_on};
+use crate::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use crate::generator::processor::Processor;
 use crate::generator::token_rules::token_rules;
 
@@ -66,14 +67,10 @@ fn main() {
 
     let token_rules = token_rules();
     let lexer = Lexer::new(token_rules);
-    let grammar = grammar();
-    let parse_table = match grammar.lalr1(reduce_on, priority_of) {
-        Ok(parse_table) => parse_table,
-        Err(conflict) => {
-            panic!("Grammar is not LALR(1), conflict detected: {conflict:?}");
-        }
-    };
-    let mut parser = Parser::new(parse_table, ParseTreeAction::new());
+    let grammar_rules = grammar_rules();
+    let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
+
+    let mut parser = Parser::new(parse_table.parse_table, ParseTreeAction::new());
 
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);

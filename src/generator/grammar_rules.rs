@@ -1,27 +1,18 @@
 use std::sync::OnceLock;
 
-use lalr::{Grammar, Rhs, Symbol};
+use lalr::{Rhs, Symbol};
 
+use crate::common::grammar_rules::{GrammarRules, Rule};
 use crate::common::symbol_table::{NonTerminal, Terminal};
 use crate::generator::symbol_table::symbol_table;
 
-macro_rules! add_rules {
-    ($grammar:expr, $($lhs:expr => [$($rhs:expr),*]),* $(,)?) => {
-        $(
-            $grammar.rules.entry($lhs).or_default().push(Rhs {
-                syms: vec![$($rhs),*],
-                act: (),
-            });
-        )*
-    };
-}
-
-pub fn grammar() -> &'static Grammar<Terminal, NonTerminal, ()> {
-    static GRAMMAR: OnceLock<Grammar<Terminal, NonTerminal, ()>> = OnceLock::new();
-    GRAMMAR.get_or_init(|| {
+#[allow(clippy::vec_init_then_push)]
+pub fn grammar_rules() -> &'static GrammarRules {
+    static GRAMMAR_RULES: OnceLock<GrammarRules> = OnceLock::new();
+    GRAMMAR_RULES.get_or_init(|| {
         let table = symbol_table();
 
-        // Terminal symbols
+        // Terminal symbols.
         let at = table.get_terminal_id("At").unwrap();
         let equal = table.get_terminal_id("Equal").unwrap();
         let pipe = table.get_terminal_id("Pipe").unwrap();
@@ -42,7 +33,7 @@ pub fn grammar() -> &'static Grammar<Terminal, NonTerminal, ()> {
         let identifier = table.get_terminal_id("Identifier").unwrap();
         let left_identifier = table.get_terminal_id("LeftIdentifier").unwrap();
 
-        // NonTerminal symbols
+        // NonTerminal symbols.
         let grammar_nt = table.get_non_terminal_id("Grammar").unwrap();
         let grammar_repetition = table.get_non_terminal_id("GrammarRepetition").unwrap();
         let directive = table.get_non_terminal_id("Directive").unwrap();
@@ -63,206 +54,229 @@ pub fn grammar() -> &'static Grammar<Terminal, NonTerminal, ()> {
         let lookahead = table.get_non_terminal_id("Lookahead").unwrap();
         let lookahead_group = table.get_non_terminal_id("LookaheadGroup").unwrap();
 
-        let mut grammar: Grammar<Terminal, NonTerminal, ()> = Grammar {
-            rules: std::collections::BTreeMap::new(),
-            start: grammar_nt,
-        };
+        let mut rules = Vec::new();
 
         // grammar = { directive | rule }
-        add_rules! {
-            grammar,
-            grammar_nt => [
+        rules.push(Rule {
+            non_terminal: grammar_nt,
+            rhs: vec![
                 Symbol::Nonterminal(grammar_nt),
-                Symbol::Nonterminal(grammar_repetition)
+                Symbol::Nonterminal(grammar_repetition),
             ],
-            grammar_repetition => [
-                Symbol::Nonterminal(directive)
-            ],
-            grammar_repetition => [
-                Symbol::Nonterminal(rule)
-            ],
-            grammar_nt => [],
-        };
+        });
+        rules.push(Rule {
+            non_terminal: grammar_repetition,
+            rhs: vec![Symbol::Nonterminal(directive)],
+        });
+        rules.push(Rule {
+            non_terminal: grammar_repetition,
+            rhs: vec![Symbol::Nonterminal(rule)],
+        });
+        rules.push(Rule {
+            non_terminal: grammar_nt,
+            rhs: vec![],
+        });
 
         // directive = "@" IDENTIFIER "=" value
-        add_rules! {
-            grammar,
-            directive => [
+        rules.push(Rule {
+            non_terminal: directive,
+            rhs: vec![
                 Symbol::Terminal(at),
                 Symbol::Terminal(left_identifier),
                 Symbol::Terminal(equal),
-                Symbol::Nonterminal(value)
+                Symbol::Nonterminal(value),
             ],
-        };
+        });
 
         // value = LITERAL | REGEX | list
-        add_rules! {
-            grammar,
-            value => [
-                Symbol::Terminal(literal)
-            ],
-            value => [
-                Symbol::Terminal(regex)
-            ],
-            value => [
-                Symbol::Nonterminal(list)
-            ],
-        };
+        rules.push(Rule {
+            non_terminal: value,
+            rhs: vec![Symbol::Terminal(literal)],
+        });
+        rules.push(Rule {
+            non_terminal: value,
+            rhs: vec![Symbol::Terminal(regex)],
+        });
+        rules.push(Rule {
+            non_terminal: value,
+            rhs: vec![Symbol::Nonterminal(list)],
+        });
 
         // list = IDENTIFIER { "," IDENTIFIER }
-        add_rules! {
-            grammar,
-            list_repetition => [
-                Symbol::Nonterminal(list)
-            ],
-            list => [
+        rules.push(Rule {
+            non_terminal: list_repetition,
+            rhs: vec![Symbol::Nonterminal(list)],
+        });
+        rules.push(Rule {
+            non_terminal: list,
+            rhs: vec![
                 Symbol::Nonterminal(list),
                 Symbol::Terminal(comma),
-                Symbol::Terminal(identifier)
+                Symbol::Terminal(identifier),
             ],
-            list => [
-                Symbol::Terminal(identifier)
-            ]
-        };
+        });
+        rules.push(Rule {
+            non_terminal: list,
+            rhs: vec![Symbol::Terminal(identifier)],
+        });
 
-        // EBNF constructs.
         // rule = IDENTIFIER "=" expression
-        add_rules! {
-            grammar,
-            rule => [
+        rules.push(Rule {
+            non_terminal: rule,
+            rhs: vec![
                 Symbol::Terminal(left_identifier),
                 Symbol::Terminal(equal),
-                Symbol::Nonterminal(expression)
+                Symbol::Nonterminal(expression),
             ],
-        };
+        });
 
         // expression = term { "|" term }
-        add_rules! {
-            grammar,
-            expression_repetition => [
-                Symbol::Nonterminal(expression)
-            ],
-            expression => [
+        rules.push(Rule {
+            non_terminal: expression_repetition,
+            rhs: vec![Symbol::Nonterminal(expression)],
+        });
+        rules.push(Rule {
+            non_terminal: expression,
+            rhs: vec![
                 Symbol::Nonterminal(expression),
                 Symbol::Terminal(pipe),
-                Symbol::Nonterminal(term)
+                Symbol::Nonterminal(term),
             ],
-            expression => [
-                Symbol::Nonterminal(term)
-            ],
-        };
+        });
+        rules.push(Rule {
+            non_terminal: expression,
+            rhs: vec![Symbol::Nonterminal(term)],
+        });
 
         // term = factor { factor }
-        add_rules! {
-            grammar,
-            term_repetition => [
-                Symbol::Nonterminal(term)
-            ],
-            term => [
-                Symbol::Nonterminal(term),
-                Symbol::Nonterminal(factor)
-            ],
-            term => [
-                Symbol::Nonterminal(factor)
-            ],
-        };
+        rules.push(Rule {
+            non_terminal: term_repetition,
+            rhs: vec![Symbol::Nonterminal(term)],
+        });
+        rules.push(Rule {
+            non_terminal: term,
+            rhs: vec![Symbol::Nonterminal(term), Symbol::Nonterminal(factor)],
+        });
+        rules.push(Rule {
+            non_terminal: term,
+            rhs: vec![Symbol::Nonterminal(factor)],
+        });
 
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
-        add_rules! {
-            grammar,
-            factor => [
+        rules.push(Rule {
+            non_terminal: factor,
+            rhs: vec![
                 Symbol::Nonterminal(factor_repetition),
                 Symbol::Nonterminal(atom),
                 Symbol::Nonterminal(factor_repetition),
-                Symbol::Nonterminal(lookahead)
+                Symbol::Nonterminal(lookahead),
             ],
-            factor => [
+        });
+        rules.push(Rule {
+            non_terminal: factor,
+            rhs: vec![
                 Symbol::Nonterminal(factor_repetition),
                 Symbol::Nonterminal(atom),
-                Symbol::Nonterminal(factor_repetition)
-            ],
-            factor_repetition => [
                 Symbol::Nonterminal(factor_repetition),
-                Symbol::Terminal(tilde)
             ],
-            factor_repetition => [],
-        };
+        });
+        rules.push(Rule {
+            non_terminal: factor_repetition,
+            rhs: vec![
+                Symbol::Nonterminal(factor_repetition),
+                Symbol::Terminal(tilde),
+            ],
+        });
+        rules.push(Rule {
+            non_terminal: factor_repetition,
+            rhs: vec![],
+        });
 
         // atom = LITERAL | IDENTIFIER ! "=" | REGEX | group | optional | repetition
-        add_rules! {
-            grammar,
-            atom => [
-                Symbol::Terminal(literal)
-            ],
-            atom => [
-                Symbol::Terminal(identifier)
-            ],
-            atom => [
-                Symbol::Terminal(regex)
-            ],
-            atom => [
-                Symbol::Nonterminal(group)
-            ],
-            atom => [
-                Symbol::Nonterminal(optional)
-            ],
-            atom => [
-                Symbol::Nonterminal(repetition)
-            ],
-        };
+        rules.push(Rule {
+            non_terminal: atom,
+            rhs: vec![Symbol::Terminal(literal)],
+        });
+        rules.push(Rule {
+            non_terminal: atom,
+            rhs: vec![Symbol::Terminal(identifier)],
+        });
+        rules.push(Rule {
+            non_terminal: atom,
+            rhs: vec![Symbol::Terminal(regex)],
+        });
+        rules.push(Rule {
+            non_terminal: atom,
+            rhs: vec![Symbol::Nonterminal(group)],
+        });
+        rules.push(Rule {
+            non_terminal: atom,
+            rhs: vec![Symbol::Nonterminal(optional)],
+        });
+        rules.push(Rule {
+            non_terminal: atom,
+            rhs: vec![Symbol::Nonterminal(repetition)],
+        });
 
         // group = "(" expression ")"
-        add_rules! {
-            grammar,
-            group => [
+        rules.push(Rule {
+            non_terminal: group,
+            rhs: vec![
                 Symbol::Terminal(left_parentheses),
                 Symbol::Nonterminal(expression),
-                Symbol::Terminal(right_parentheses)
+                Symbol::Terminal(right_parentheses),
             ],
-        };
+        });
 
         // optional = "[" expression "]"
-        add_rules! {
-            grammar,
-            optional => [
+        rules.push(Rule {
+            non_terminal: optional,
+            rhs: vec![
                 Symbol::Terminal(left_bracket),
                 Symbol::Nonterminal(expression),
-                Symbol::Terminal(right_bracket)
+                Symbol::Terminal(right_bracket),
             ],
-        };
+        });
 
         // repetition = "{" expression "}"
-        add_rules! {
-            grammar,
-            repetition => [
+        rules.push(Rule {
+            non_terminal: repetition,
+            rhs: vec![
                 Symbol::Terminal(left_brace),
                 Symbol::Nonterminal(expression),
-                Symbol::Terminal(right_brace)
+                Symbol::Terminal(right_brace),
             ],
-        };
+        });
 
         // lookahead = (POSITIVE_LOOKAHEAD | NEGATIVE_LOOKAHEAD | POSITIVE_LOOKBEHIND | NEGATIVE_LOOKBEHIND) factor
-        add_rules! {
-            grammar,
-            lookahead => [
+        rules.push(Rule {
+            non_terminal: lookahead,
+            rhs: vec![
                 Symbol::Nonterminal(lookahead_group),
-                Symbol::Nonterminal(factor)
+                Symbol::Nonterminal(factor),
             ],
-            lookahead_group => [
-                Symbol::Terminal(positive_look_ahead)
-            ],
-            lookahead_group => [
-                Symbol::Terminal(negative_look_ahead)
-            ],
-            lookahead_group => [
-                Symbol::Terminal(positive_look_behind)
-            ],
-            lookahead_group => [
-                Symbol::Terminal(negative_look_behind)
-            ],
-        };
+        });
+        rules.push(Rule {
+            non_terminal: lookahead_group,
+            rhs: vec![Symbol::Terminal(positive_look_ahead)],
+        });
+        rules.push(Rule {
+            non_terminal: lookahead_group,
+            rhs: vec![Symbol::Terminal(negative_look_ahead)],
+        });
+        rules.push(Rule {
+            non_terminal: lookahead_group,
+            rhs: vec![Symbol::Terminal(positive_look_behind)],
+        });
+        rules.push(Rule {
+            non_terminal: lookahead_group,
+            rhs: vec![Symbol::Terminal(negative_look_behind)],
+        });
 
-        grammar
+        GrammarRules {
+            start_symbol: grammar_nt,
+            rules,
+        }
     })
 }
 

@@ -20,19 +20,19 @@ impl SymbolTable {
         terminals: HashMap<String, Terminal>,
         non_terminals: HashMap<String, NonTerminal>,
     ) -> Self {
-        let mut terminal_names = vec!["".to_string(); terminals.len()];
+        let mut terminal_names = vec![String::new(); terminals.len()];
         for (name, Terminal(id)) in &terminals {
             terminal_names[*id] = name.clone();
         }
-        let mut non_terminal_names = vec!["".to_string(); non_terminals.len()];
+        let mut non_terminal_names = vec![String::new(); non_terminals.len()];
         for (name, NonTerminal(id)) in &non_terminals {
             non_terminal_names[*id] = name.clone();
         }
-        SymbolTable {
-            terminals,
+        Self {
             non_terminals,
-            terminal_names,
+            terminals,
             non_terminal_names,
+            terminal_names,
         }
     }
 
@@ -62,21 +62,23 @@ impl SymbolTable {
     }
 
     pub fn get_terminal_name(&self, terminal: Terminal) -> Option<&str> {
-        self.terminal_names.get(terminal.0).map(|s| s.as_str())
+        self.terminal_names
+            .get(terminal.0)
+            .map(std::string::String::as_str)
     }
 
     pub fn get_non_terminal_name(&self, non_terminal: NonTerminal) -> Option<&str> {
         self.non_terminal_names
             .get(non_terminal.0)
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
     }
 }
 
 impl TokenKind for Terminal {
     fn unrecognized() -> Self {
-        Terminal(usize::MAX)
+        Self(usize::MAX)
     }
     fn eof() -> Self {
-        Terminal(usize::MAX - 1)
+        Self(usize::MAX - 1)
     }
 }

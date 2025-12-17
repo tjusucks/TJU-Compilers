@@ -19,7 +19,7 @@ impl Lexer {
         Self { recognizer }
     }
 
-    pub fn tokenize<'a>(self, input: &'a str) -> impl Iterator<Item = Token<'a, Terminal>> {
+    pub fn tokenize(self, input: &str) -> impl Iterator<Item = Token<'_, Terminal>> {
         let iterator = self.recognizer.into_lexer(input, 0);
         iterator.chain(iter::once(Token::eof(input)))
     }

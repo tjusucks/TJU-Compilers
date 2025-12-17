@@ -2,7 +2,8 @@ use lalr::Rhs;
 use relex::Token;
 
 use crate::common::action::Action;
-use crate::common::symbol_table::{NonTerminal, Terminal};
+use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
+use crate::common::token_rules::TokenRules;
 use crate::generator::parse_tree::{ParseError, ParseTree, Span};
 use crate::generator::symbol_table::symbol_table;
 
@@ -97,4 +98,9 @@ impl Action for ParseTreeAction {
         let children = std::mem::take(&mut self.node_stack);
         ParseTree::non_terminal(grammar_nt, children, Span::new(0, 0, 1, 1))
     }
+}
+
+pub struct GeneratorResult {
+    symbol_table: SymbolTable,
+    token_rules: TokenRules,
 }

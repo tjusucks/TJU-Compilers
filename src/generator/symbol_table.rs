@@ -64,13 +64,13 @@ pub fn symbol_table() -> &'static SymbolTable {
         let terminals: HashMap<String, Terminal> = terminal_names
             .iter()
             .enumerate()
-            .map(|(index, name)| (name.to_string(), Terminal(index)))
+            .map(|(index, name)| ((*name).to_string(), Terminal(index)))
             .collect();
 
         let non_terminals: HashMap<String, NonTerminal> = non_terminal_names
             .iter()
             .enumerate()
-            .map(|(index, name)| (name.to_string(), NonTerminal(index)))
+            .map(|(index, name)| ((*name).to_string(), NonTerminal(index)))
             .collect();
 
         SymbolTable::from_maps(terminals, non_terminals)

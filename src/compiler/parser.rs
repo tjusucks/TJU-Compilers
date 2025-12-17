@@ -13,7 +13,7 @@ impl<'a, A> Parser<'a, A>
 where
     A: Action,
 {
-    pub fn new(
+    pub const fn new(
         parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
         semantic_action: A,
     ) -> Self {
