@@ -2,6 +2,7 @@ use crate::common::parse_table::ParseTable;
 use crate::compiler::lexer::Lexer;
 use crate::compiler::parser::Parser;
 use crate::generator::action::ParseTreeAction;
+use crate::generator::generator_action::GeneratorAction;
 use crate::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use crate::generator::processor::Processor;
 use crate::generator::token_rules::token_rules;
@@ -33,7 +34,7 @@ fn main() {
         # EBNF constructs.
         rule        = IDENTIFIER "=" expression
         expression  = term { "|" term }
-        term        = factor { factor }
+        term        = factor { factor } | EMPTY
         factor      = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
         atom        = LITERAL
                     | IDENTIFIER ! "="
@@ -59,6 +60,9 @@ fn main() {
         # Whitespace.
         WHITESPACE  = "~"
 
+        # Epsilon.
+        EMPTY     = "EPSILON"
+
         # Tokens.
         LITERAL     = /"[^"]*"/~
         REGEX       = /\/(?:[^\/\\]|\\.)*\//~
@@ -76,5 +80,5 @@ fn main() {
     let processed = Processor::process(tokens);
     let result = parser.parse(processed).unwrap();
 
-    println!("{result}");
+    println!("{}", result);
 }

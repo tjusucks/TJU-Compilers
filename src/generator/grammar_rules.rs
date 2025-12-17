@@ -28,6 +28,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
         let negative_look_ahead = table.get_terminal_id("NegativeLookAhead").unwrap();
         let positive_look_behind = table.get_terminal_id("PositiveLookBehind").unwrap();
         let negative_look_behind = table.get_terminal_id("NegativeLookBehind").unwrap();
+        let empty = table.get_terminal_id("Empty").unwrap();
         let literal = table.get_terminal_id("Literal").unwrap();
         let regex = table.get_terminal_id("Regex").unwrap();
         let identifier = table.get_terminal_id("Identifier").unwrap();
@@ -148,7 +149,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             rhs: vec![Symbol::Nonterminal(term)],
         });
 
-        // term = factor { factor }
+        // term = factor { factor } | EMPTY
         rules.push(Rule {
             non_terminal: term_repetition,
             rhs: vec![Symbol::Nonterminal(term)],
@@ -160,6 +161,10 @@ pub fn grammar_rules() -> &'static GrammarRules {
         rules.push(Rule {
             non_terminal: term,
             rhs: vec![Symbol::Nonterminal(factor)],
+        });
+        rules.push(Rule {
+            non_terminal: term,
+            rhs: vec![Symbol::Terminal(empty)],
         });
 
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]

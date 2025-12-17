@@ -24,6 +24,7 @@ pub fn token_rules() -> &'static TokenRules {
         let negative_look_ahead = table.get_terminal_id("NegativeLookAhead").unwrap();
         let positive_look_behind = table.get_terminal_id("PositiveLookBehind").unwrap();
         let negative_look_behind = table.get_terminal_id("NegativeLookBehind").unwrap();
+        let empty = table.get_terminal_id("Empty").unwrap();
         let literal = table.get_terminal_id("Literal").unwrap();
         let regex = table.get_terminal_id("Regex").unwrap();
         let identifier = table.get_terminal_id("Identifier").unwrap();
@@ -104,6 +105,11 @@ pub fn token_rules() -> &'static TokenRules {
             Rule {
                 kind: negative_look_behind,
                 regex: r"<-!".to_string(),
+                skip: false,
+            },
+            Rule {
+                kind: empty,
+                regex: r"EPSILON".to_string(),
                 skip: false,
             },
             Rule {

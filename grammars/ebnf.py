@@ -21,7 +21,7 @@ list        = IDENTIFIER { "," IDENTIFIER }
 # EBNF constructs.
 rule        = IDENTIFIER "=" expression
 expression  = term { "|" term }
-term        = factor { factor }
+term        = factor { factor } | EMPTY
 factor      = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
 atom        = LITERAL
             | IDENTIFIER ! "="
@@ -46,6 +46,9 @@ NEGATIVE_LOOKBEHIND = "<-!"
 
 # Whitespace.
 WHITESPACE  = "~"
+
+# Epsilon.
+EMPTY       = "EPSILON"
 
 # Tokens.
 LITERAL     = /"[^"]*"/~

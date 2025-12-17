@@ -25,6 +25,8 @@ pub fn symbol_table() -> &'static SymbolTable {
             "NegativeLookAhead",  // '!'
             "PositiveLookBehind", // '<-&'
             "NegativeLookBehind", // '<-!'
+            // Epsilon token.
+            "Empty", // epsilon
             // Literal tokens, for strings and regexes.
             "Literal", // string literal
             "Regex",   // regex literal
