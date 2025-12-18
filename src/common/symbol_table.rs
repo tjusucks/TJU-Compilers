@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use relex::TokenKind;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Terminal(pub usize);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct NonTerminal(pub usize);
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SymbolTable {
     non_terminals: HashMap<String, NonTerminal>,
     terminals: HashMap<String, Terminal>,

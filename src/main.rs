@@ -1,7 +1,6 @@
 use crate::common::parse_table::ParseTable;
 use crate::compiler::lexer::Lexer;
 use crate::compiler::parser::Parser;
-use crate::generator::action::ParseTreeAction;
 use crate::generator::generator_action::GeneratorAction;
 use crate::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use crate::generator::processor::Processor;
@@ -74,11 +73,11 @@ fn main() {
     let grammar_rules = grammar_rules();
     let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
 
-    let mut parser = Parser::new(parse_table.parse_table, ParseTreeAction::new());
+    let mut parser = Parser::new(parse_table.parse_table, GeneratorAction::new());
 
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
     let result = parser.parse(processed).unwrap();
 
-    println!("{}", result);
+    println!("{}", result.parse_tree);
 }

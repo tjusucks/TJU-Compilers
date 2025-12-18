@@ -1,28 +1,89 @@
-use lalr::Rhs;
+use std::ascii::AsciiExt;
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+
 use relex::Token;
 
 use crate::common::action::Action;
-use crate::common::symbol_table::{NonTerminal, Terminal};
+use crate::common::grammar_rules::GrammarRules;
+use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
+use crate::common::token_rules::TokenRules;
 use crate::generator::parse_tree::{ParseError, ParseTreeNode, Span};
 use crate::generator::symbol_table::symbol_table;
 
-pub struct ParseTreeAction {
-    node_stack: Vec<ParseTreeNode>,
+#[derive(Debug)]
+pub struct GeneratorResult {
+    pub symbol_table: SymbolTable,
+    pub grammar_rules: GrammarRules,
+    pub token_rules: TokenRules,
+    pub parse_tree: ParseTreeNode,
 }
 
-impl ParseTreeAction {
-    pub const fn new() -> Self {
+impl GeneratorResult {
+    pub const fn new(
+        symbol_table: SymbolTable,
+        grammar_rules: GrammarRules,
+        token_rules: TokenRules,
+        parse_tree: ParseTreeNode,
+    ) -> Self {
         Self {
-            node_stack: Vec::new(),
+            symbol_table,
+            grammar_rules,
+            token_rules,
+            parse_tree,
         }
     }
 }
 
-impl Action for ParseTreeAction {
-    type ParseResult = ParseTreeNode;
+pub struct GeneratorAction {
+    pub symbol_table: SymbolTable,
+    pub grammar_rules: GrammarRules,
+    pub token_rules: TokenRules,
+    productions: HashMap<String, Vec<Vec<String>>>,
+    node_stack: Vec<ParseTreeNode>,
+}
+
+impl GeneratorAction {
+    pub fn new() -> Self {
+        Self {
+            symbol_table: SymbolTable::default(),
+            grammar_rules: GrammarRules::default(),
+            token_rules: TokenRules::default(),
+            productions: HashMap::new(),
+            node_stack: Vec::new(),
+        }
+    }
+
+    fn unquote(str: &str) -> &str {
+        if str.len() >= 2
+            && (str.starts_with('"') && str.ends_with('"')
+                || str.starts_with('\'') && str.ends_with('\''))
+        {
+            &str[1..str.len() - 1]
+        } else {
+            str
+        }
+    }
+
+    fn add_production(&mut self, lhs: String, rhs: Vec<Vec<String>>) {
+        println!("Adding production: {} -> {:?}", lhs, rhs);
+
+        match self.productions.entry(lhs) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(rhs);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(rhs);
+            }
+        }
+    }
+}
+
+impl Action for GeneratorAction {
+    type ParseResult = GeneratorResult;
     type ParseError = ParseError;
 
-    fn on_reduce(&mut self, non_terminal: NonTerminal, rhs: &Rhs<Terminal, NonTerminal, ()>) {
+    fn on_reduce(&mut self, non_terminal: NonTerminal, rhs: &lalr::Rhs<Terminal, NonTerminal, ()>) {
         let table = symbol_table();
 
         let grammar = table.get_non_terminal_id("Grammar").unwrap();
@@ -73,6 +134,15 @@ impl Action for ParseTreeAction {
                 ParseTreeNode::non_terminal(non_terminal, children, Span::new(0, 0, 1, 1));
             self.node_stack.push(new_node);
         }
+
+        if non_terminal == table.get_non_terminal_id("Rule").unwrap() {
+            let node = self.node_stack.last().unwrap();
+            let children = node.get_children();
+
+            // rule = IDENTIFIER "=" expression
+            assert!(children.len() == 3);
+            self.add_production(children[0].get_lexeme(), children[2].get_terms().unwrap());
+        }
     }
 
     fn on_shift(&mut self, token: Token<Terminal>) {
@@ -82,10 +152,18 @@ impl Action for ParseTreeAction {
     }
 
     fn on_accept(&mut self) -> Self::ParseResult {
+        println!("Productions: {:?}", self.productions);
+
         let table = symbol_table();
         let grammar_nt = table.get_non_terminal_id("Grammar").unwrap();
 
         let children = std::mem::take(&mut self.node_stack);
-        ParseTreeNode::non_terminal(grammar_nt, children, Span::new(0, 0, 1, 1))
+        let root_node = ParseTreeNode::non_terminal(grammar_nt, children, Span::new(0, 0, 1, 1));
+        GeneratorResult::new(
+            std::mem::take(&mut self.symbol_table),
+            std::mem::take(&mut self.grammar_rules),
+            std::mem::take(&mut self.token_rules),
+            root_node,
+        )
     }
 }
