@@ -1,16 +1,14 @@
-use crate::common::parse_table::ParseTable;
-use crate::compiler::lexer::Lexer;
-use crate::compiler::parser::Parser;
-use crate::generator::generator_action::GeneratorAction;
-use crate::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
-use crate::generator::processor::Processor;
-use crate::generator::token_rules::token_rules;
+use rustcc::common::parse_table::ParseTable;
+use rustcc::compiler::lexer::Lexer;
+use rustcc::compiler::parser::Parser;
+use rustcc::generator::generator_action::GeneratorAction;
+use rustcc::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
+use rustcc::generator::processor::Processor;
+use rustcc::generator::symbol_table::symbol_table;
+use rustcc::generator::token_rules::token_rules;
 
-mod common;
-mod compiler;
-mod generator;
-
-fn main() {
+#[test]
+fn test_generated_lexer_tokenization() {
     // Example EBNF input string.
     let input = r#"
         # EBNF Grammar.
@@ -76,6 +74,17 @@ fn main() {
     let mut parser = Parser::new(parse_table.parse_table, GeneratorAction::default());
 
     let tokens = lexer.tokenize(input);
+
+    for token in tokens {
+        println!(
+            "{:?}: {}",
+            symbol_table().get_terminal_name(token.kind),
+            token.text
+        );
+    }
+
+    let lexer = Lexer::new(token_rules);
+    let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
     let result = parser.parse(processed).unwrap();
 
@@ -84,5 +93,34 @@ fn main() {
     println!();
     println!("{:?}", result.symbol_table);
     println!("{:?}", result.grammar_rules);
-    println!("{:?}", result.token_rules);
+
+    println!("Generated token rules");
+    for rule in &result.token_rules {
+        println!(
+            "Rule: Kind: {:?}, Regex: {}, Skip: {}",
+            result.symbol_table.get_terminal_name(rule.kind),
+            rule.regex,
+            rule.skip
+        );
+    }
+
+    println!("Correct token rules");
+    for rule in token_rules {
+        println!(
+            "Rule: Kind: {:?}, Regex: {}, Skip: {}",
+            symbol_table().get_terminal_name(rule.kind),
+            rule.regex,
+            rule.skip
+        );
+    }
+
+    let lexer = Lexer::new(&result.token_rules);
+    let tokens = lexer.tokenize(input);
+    for token in tokens {
+        println!(
+            "{:?}: {}",
+            result.symbol_table.get_terminal_name(token.kind),
+            token.text
+        );
+    }
 }

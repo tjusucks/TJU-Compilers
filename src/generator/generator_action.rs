@@ -19,6 +19,47 @@ pub struct GeneratorResult {
     pub parse_tree: ParseTreeNode,
 }
 
+#[derive(Default)]
+pub struct GeneratorAction {
+    pub symbol_table: SymbolTable,
+    pub grammar_rules: GrammarRules,
+    pub token_rules: TokenRules,
+    productions: HashMap<String, Vec<Vec<Symbol>>>,
+    node_stack: Vec<ParseTreeNode>,
+}
+
+fn unquote(str: &str) -> &str {
+    if str.len() >= 2
+        && (str.starts_with('"') && str.ends_with('"')
+            || str.starts_with('\'') && str.ends_with('\''))
+    {
+        &str[1..str.len() - 1]
+    } else {
+        str
+    }
+}
+
+fn strip(pattern: &str) -> &str {
+    if pattern.starts_with('/') && pattern.ends_with('/') && pattern.len() > 2 {
+        &pattern[1..pattern.len() - 1]
+    } else {
+        pattern
+    }
+}
+
+fn combine_literals(literals: &[String]) -> String {
+    let patterns: Vec<String> = literals
+        .iter()
+        .map(|literal| escape(unquote(literal)))
+        .collect();
+
+    match patterns.len() {
+        0 => String::new(),
+        1 => patterns[0].clone(),
+        _ => format!("({})", patterns.join("|")),
+    }
+}
+
 impl GeneratorResult {
     pub const fn new(
         symbol_table: SymbolTable,
@@ -35,25 +76,7 @@ impl GeneratorResult {
     }
 }
 
-pub struct GeneratorAction {
-    pub symbol_table: SymbolTable,
-    pub grammar_rules: GrammarRules,
-    pub token_rules: TokenRules,
-    productions: HashMap<String, Vec<Vec<Symbol>>>,
-    node_stack: Vec<ParseTreeNode>,
-}
-
 impl GeneratorAction {
-    pub fn new() -> Self {
-        Self {
-            symbol_table: SymbolTable::default(),
-            grammar_rules: GrammarRules::default(),
-            token_rules: TokenRules::default(),
-            productions: HashMap::new(),
-            node_stack: Vec::new(),
-        }
-    }
-
     fn add_production(&mut self, lhs: String, rhs: Vec<Vec<Symbol>>) {
         println!("Adding production: {} -> {:?}", lhs, rhs);
 
@@ -80,8 +103,16 @@ impl GeneratorAction {
                     match symbol {
                         Symbol::Literal(literal) => {
                             // Literals are OK for terminals.
-                            self.symbol_table
-                                .insert_terminal(GeneratorAction::unquote(literal).to_string());
+                            let literal = unquote(literal).to_string();
+                            if self.symbol_table.get_terminal_id(&literal).is_none() {
+                                let terminal = self.symbol_table.insert_terminal(literal.clone());
+                                self.token_rules.push(Rule {
+                                    kind: terminal,
+                                    regex: escape(&literal),
+                                    skip: false,
+                                });
+                            }
+
                             if let Some(literal_pattern) = literal_patterns.get_mut(lhs) {
                                 literal_pattern.push(literal.clone());
                             } else {
@@ -115,13 +146,13 @@ impl GeneratorAction {
                 } else if regex_pattern.is_some() {
                     self.token_rules.push(Rule {
                         kind: terminal,
-                        regex: regex_pattern.unwrap().clone(),
+                        regex: strip(regex_pattern.unwrap()).to_string(),
                         skip: false,
                     });
                 } else if let Some(literals) = literal_pattern {
                     self.token_rules.push(Rule {
                         kind: terminal,
-                        regex: GeneratorAction::combine_literals(literals),
+                        regex: combine_literals(literals),
                         skip: false,
                     });
                 }
@@ -132,30 +163,30 @@ impl GeneratorAction {
                 }
             }
         }
+
+        // Add token rules for whitespace and comments.
+        let comment = self.insert_unique("Comment");
+        let whitespace = self.insert_unique("Whitespace");
+        self.token_rules.push(Rule {
+            kind: comment,
+            regex: r"#.*".to_string(),
+            skip: true,
+        });
+        self.token_rules.push(Rule {
+            kind: whitespace,
+            regex: r"\s+".to_string(),
+            skip: true,
+        });
     }
 
-    fn unquote(str: &str) -> &str {
-        if str.len() >= 2
-            && (str.starts_with('"') && str.ends_with('"')
-                || str.starts_with('\'') && str.ends_with('\''))
-        {
-            &str[1..str.len() - 1]
-        } else {
-            str
+    fn insert_unique(&mut self, base: &str) -> Terminal {
+        let mut name = base.to_string();
+        let mut counter = 0;
+        while self.symbol_table.get_terminal_id(&name).is_some() {
+            counter += 1;
+            name = format!("{}{}", base, counter);
         }
-    }
-
-    fn combine_literals(literals: &[String]) -> String {
-        let patterns: Vec<String> = literals
-            .iter()
-            .map(|literal| escape(GeneratorAction::unquote(literal)))
-            .collect();
-
-        match patterns.len() {
-            0 => String::new(),
-            1 => patterns[0].clone(),
-            _ => format!("({})", patterns.join("|")),
-        }
+        self.symbol_table.insert_terminal(name.clone())
     }
 }
 
