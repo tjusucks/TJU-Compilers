@@ -1,4 +1,3 @@
-use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
@@ -8,7 +7,7 @@ use crate::common::action::Action;
 use crate::common::grammar_rules::GrammarRules;
 use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
 use crate::common::token_rules::TokenRules;
-use crate::generator::parse_tree::{ParseError, ParseTreeNode, Span};
+use crate::generator::parse_tree::{ParseError, ParseTreeNode, Span, Symbol};
 use crate::generator::symbol_table::symbol_table;
 
 #[derive(Debug)]
@@ -39,7 +38,7 @@ pub struct GeneratorAction {
     pub symbol_table: SymbolTable,
     pub grammar_rules: GrammarRules,
     pub token_rules: TokenRules,
-    productions: HashMap<String, Vec<Vec<String>>>,
+    productions: HashMap<String, Vec<Vec<Symbol>>>,
     node_stack: Vec<ParseTreeNode>,
 }
 
@@ -65,7 +64,7 @@ impl GeneratorAction {
         }
     }
 
-    fn add_production(&mut self, lhs: String, rhs: Vec<Vec<String>>) {
+    fn add_production(&mut self, lhs: String, rhs: Vec<Vec<Symbol>>) {
         println!("Adding production: {} -> {:?}", lhs, rhs);
 
         match self.productions.entry(lhs) {

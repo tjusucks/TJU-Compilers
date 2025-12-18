@@ -45,6 +45,14 @@ pub enum ParseTreeNode {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Symbol {
+    Literal(String),    // Literals like "="
+    Regex(String),      // Regexes like /[a-z]+/
+    Identifier(String), // Identifiers like "expression"
+    Epsilon,            // Empty production
+}
+
 impl ParseTreeNode {
     pub const fn non_terminal(symbol: NonTerminal, children: Vec<Self>, span: Span) -> Self {
         Self::NonTerminal {
@@ -76,6 +84,32 @@ impl ParseTreeNode {
         }
     }
 
+    pub fn to_symbol(&self) -> Result<Symbol, String> {
+        match self {
+            Self::Terminal { token, lexeme, .. } => {
+                let literal = symbol_table().get_terminal_id("Literal").unwrap();
+                let regex = symbol_table().get_terminal_id("Regex").unwrap();
+                let identifier = symbol_table().get_terminal_id("Identifier").unwrap();
+                let epsilon = symbol_table().get_terminal_id("Empty").unwrap();
+                if *token == literal {
+                    Ok(Symbol::Literal(lexeme.clone()))
+                } else if *token == regex {
+                    Ok(Symbol::Regex(lexeme.clone()))
+                } else if *token == identifier {
+                    Ok(Symbol::Identifier(lexeme.clone()))
+                } else if *token == epsilon {
+                    Ok(Symbol::Epsilon)
+                } else {
+                    Err(format!("Unexpected terminal token: {:?}", token))
+                }
+            }
+            Self::NonTerminal { symbol, .. } => Err(format!(
+                "Cannot convert non-terminal symbol to symbol: {:?}",
+                symbol
+            )),
+        }
+    }
+
     pub fn is_terminal(&self, token: Terminal) -> bool {
         matches!(self, Self::Terminal { token: t, .. } if *t == token)
     }
@@ -98,7 +132,7 @@ impl ParseTreeNode {
         }
     }
 
-    pub fn get_terms(&self) -> Result<Vec<Vec<String>>, String> {
+    pub fn get_terms(&self) -> Result<Vec<Vec<Symbol>>, String> {
         // expression  = term { "|" term }
         let expression = symbol_table().get_non_terminal_id("Expression").unwrap();
         let term = symbol_table().get_non_terminal_id("Term").unwrap();
@@ -125,7 +159,7 @@ impl ParseTreeNode {
         Ok(terminals)
     }
 
-    pub fn get_factors(&self) -> Result<Vec<String>, String> {
+    pub fn get_factors(&self) -> Result<Vec<Symbol>, String> {
         // term  = factor { factor } | EMPTY
         let term = symbol_table().get_non_terminal_id("Term").unwrap();
         let factor = symbol_table().get_non_terminal_id("Factor").unwrap();
@@ -139,7 +173,7 @@ impl ParseTreeNode {
 
         if children.len() == 1 && children[0].is_terminal(empty) {
             // Child is epsilon.
-            Ok(children.iter().map(|child| child.get_lexeme()).collect())
+            Ok(vec![Symbol::Epsilon])
         } else if children[0].is_non_terminal(factor) {
             // Children are factors.
             let mut terminals = Vec::new();
@@ -152,7 +186,7 @@ impl ParseTreeNode {
         }
     }
 
-    pub fn get_atom(&self) -> Result<String, String> {
+    pub fn get_atom(&self) -> Result<Symbol, String> {
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
         let factor = symbol_table().get_non_terminal_id("Factor").unwrap();
         let factor_repetition = symbol_table()
@@ -170,10 +204,9 @@ impl ParseTreeNode {
         // Skip leading and trailing repetitions.
         if children[0].is_non_terminal(factor_repetition) {
             // Skip leading repetition.
-            Ok(children[1].get_lexeme())
+            children[1].to_symbol()
         } else {
-            // Skip trailing repetition.
-            Ok(children[0].get_lexeme())
+            children[0].to_symbol()
         }
     }
 }
