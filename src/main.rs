@@ -23,20 +23,20 @@ fn main() {
         @drop       = whitespace, strings  # Drop anonymous whitespace and (anonymous) string literals.
 
         # Grammar.
-        grammar     = { directive | rule }
+        grammar     = directive | rule
 
         # Directive.
         directive   = "@" IDENTIFIER "=" value
         value       = LITERAL | REGEX | list
-        list        = IDENTIFIER { "," IDENTIFIER }
+        list        = IDENTIFIER "," IDENTIFIER
 
         # EBNF constructs.
         rule        = IDENTIFIER "=" expression
-        expression  = term { "|" term }
-        term        = factor { factor } | EMPTY
-        factor      = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
+        expression  = term "|" term
+        term        = factor factor | EMPTY
+        factor      = WHITESPACE atom WHITESPACE lookahead
         atom        = LITERAL
-                    | IDENTIFIER ! "="
+                    | IDENTIFIER
                     | REGEX
                     | group
                     | optional
@@ -44,11 +44,11 @@ fn main() {
         group       = "(" expression ")"
         optional    = "[" expression "]"
         repetition  = "{" expression "}"
-        lookahead   = ( POSITIVE_LOOKAHEAD
+        lookahead   = POSITIVE_LOOKAHEAD
                     | NEGATIVE_LOOKAHEAD
                     | POSITIVE_LOOKBEHIND
                     | NEGATIVE_LOOKBEHIND
-                    ) factor
+                    factor
 
         # Look ahead / behind.
         POSITIVE_LOOKAHEAD  = "&"
@@ -60,7 +60,7 @@ fn main() {
         WHITESPACE  = "~"
 
         # Epsilon.
-        EMPTY     = "EPSILON"
+        EMPTY       = "EPSILON"
 
         # Tokens.
         LITERAL     = /"[^"]*"/~
@@ -80,4 +80,9 @@ fn main() {
     let result = parser.parse(processed).unwrap();
 
     println!("{}", result.parse_tree);
+
+    println!();
+    println!("{:?}", result.symbol_table);
+    println!("{:?}", result.grammar_rules);
+    println!("{:?}", result.token_rules);
 }

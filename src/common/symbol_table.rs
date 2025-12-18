@@ -38,20 +38,28 @@ impl SymbolTable {
     }
 
     pub fn insert_non_terminal(&mut self, non_terminal_name: String) -> NonTerminal {
-        let non_terminal_id = self.non_terminals.len();
-        let non_terminal = NonTerminal(non_terminal_id);
-        self.non_terminals
-            .insert(non_terminal_name.clone(), non_terminal);
-        self.non_terminal_names.push(non_terminal_name);
-        non_terminal
+        if !self.non_terminals.contains_key(&non_terminal_name) {
+            let non_terminal_id = self.non_terminals.len();
+            let non_terminal = NonTerminal(non_terminal_id);
+            self.non_terminals
+                .insert(non_terminal_name.clone(), non_terminal);
+            self.non_terminal_names.push(non_terminal_name);
+            non_terminal
+        } else {
+            self.non_terminals[&non_terminal_name]
+        }
     }
 
     pub fn insert_terminal(&mut self, terminal_name: String) -> Terminal {
-        let terminal_id = self.terminals.len();
-        let terminal = Terminal(terminal_id);
-        self.terminals.insert(terminal_name.clone(), terminal);
-        self.terminal_names.push(terminal_name);
-        terminal
+        if !self.terminals.contains_key(&terminal_name) {
+            let terminal_id = self.terminals.len();
+            let terminal = Terminal(terminal_id);
+            self.terminals.insert(terminal_name.clone(), terminal);
+            self.terminal_names.push(terminal_name);
+            terminal
+        } else {
+            self.terminals[&terminal_name]
+        }
     }
 
     pub fn get_non_terminal_id(&self, non_terminal: &str) -> Option<NonTerminal> {

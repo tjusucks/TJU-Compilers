@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
+use regex::escape;
 use relex::Token;
 
 use crate::common::action::Action;
 use crate::common::grammar_rules::GrammarRules;
 use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
-use crate::common::token_rules::TokenRules;
+use crate::common::token_rules::{Rule, TokenRules};
 use crate::generator::parse_tree::{ParseError, ParseTreeNode, Span, Symbol};
 use crate::generator::symbol_table::symbol_table;
 
@@ -53,6 +54,86 @@ impl GeneratorAction {
         }
     }
 
+    fn add_production(&mut self, lhs: String, rhs: Vec<Vec<Symbol>>) {
+        println!("Adding production: {} -> {:?}", lhs, rhs);
+
+        match self.productions.entry(lhs) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(rhs);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(rhs);
+            }
+        }
+    }
+
+    fn generate_result(&mut self) {
+        // Collect all symbols and classify them.
+        let mut regex_patterns = HashMap::new();
+        let mut literal_patterns: HashMap<String, Vec<String>> = HashMap::new();
+        for (lhs, rhs_alternatives) in self.productions.iter() {
+            let mut is_terminal = true;
+
+            // Check if this rule defines a terminal or nonterminal.
+            for symbols in rhs_alternatives {
+                for symbol in symbols {
+                    match symbol {
+                        Symbol::Literal(literal) => {
+                            // Literals are OK for terminals.
+                            self.symbol_table
+                                .insert_terminal(GeneratorAction::unquote(literal).to_string());
+                            if let Some(literal_pattern) = literal_patterns.get_mut(lhs) {
+                                literal_pattern.push(literal.clone());
+                            } else {
+                                literal_patterns.insert(lhs.clone(), vec![literal.clone()]);
+                            }
+                        }
+                        Symbol::Regex(regex) => {
+                            if regex_patterns.contains_key(lhs) {
+                                panic!("Multiple regex patterns for {}", lhs);
+                            }
+                            regex_patterns.insert(lhs.clone(), regex.clone());
+                        }
+                        Symbol::Identifier(_) => {
+                            // If RHS contains identifiers, LHS is a nonterminal.
+                            is_terminal = false;
+                        }
+                        Symbol::Epsilon => {
+                            // Epsilon is OK for both.
+                        }
+                    }
+                }
+            }
+
+            // Build symbol table.
+            if is_terminal {
+                let terminal = self.symbol_table.insert_terminal(lhs.clone());
+                let regex_pattern = regex_patterns.get(lhs);
+                let literal_pattern = literal_patterns.get(lhs);
+                if regex_pattern.is_some() && literal_pattern.is_some() {
+                    panic!("Regex patterns and literal patterns cannot be used together");
+                } else if regex_pattern.is_some() {
+                    self.token_rules.push(Rule {
+                        kind: terminal,
+                        regex: regex_pattern.unwrap().clone(),
+                        skip: false,
+                    });
+                } else if let Some(literals) = literal_pattern {
+                    self.token_rules.push(Rule {
+                        kind: terminal,
+                        regex: GeneratorAction::combine_literals(literals),
+                        skip: false,
+                    });
+                }
+            } else {
+                self.symbol_table.insert_non_terminal(lhs.clone());
+                if regex_patterns.contains_key(lhs) {
+                    panic!("Regex patterns are not allowed for nonterminals");
+                }
+            }
+        }
+    }
+
     fn unquote(str: &str) -> &str {
         if str.len() >= 2
             && (str.starts_with('"') && str.ends_with('"')
@@ -64,16 +145,16 @@ impl GeneratorAction {
         }
     }
 
-    fn add_production(&mut self, lhs: String, rhs: Vec<Vec<Symbol>>) {
-        println!("Adding production: {} -> {:?}", lhs, rhs);
+    fn combine_literals(literals: &[String]) -> String {
+        let patterns: Vec<String> = literals
+            .iter()
+            .map(|literal| escape(GeneratorAction::unquote(literal)))
+            .collect();
 
-        match self.productions.entry(lhs) {
-            Entry::Occupied(mut entry) => {
-                entry.get_mut().extend(rhs);
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(rhs);
-            }
+        match patterns.len() {
+            0 => String::new(),
+            1 => patterns[0].clone(),
+            _ => format!("({})", patterns.join("|")),
         }
     }
 }
@@ -152,6 +233,7 @@ impl Action for GeneratorAction {
 
     fn on_accept(&mut self) -> Self::ParseResult {
         println!("Productions: {:?}", self.productions);
+        self.generate_result();
 
         let table = symbol_table();
         let grammar_nt = table.get_non_terminal_id("Grammar").unwrap();

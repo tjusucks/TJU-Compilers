@@ -66,5 +66,6 @@ name = "rustcc"
 version = "0.1.0"
 dependencies = [
  "lalr",
+ "regex",
  "relex",
 ]
