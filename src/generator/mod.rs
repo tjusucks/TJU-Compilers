@@ -1,5 +1,4 @@
 pub mod action;
-pub mod generator_action;
 pub mod grammar_rules;
 pub mod parse_tree;
 pub mod processor;
