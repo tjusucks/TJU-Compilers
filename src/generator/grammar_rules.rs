@@ -285,6 +285,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
     })
 }
 
+#[must_use] 
 pub fn reduce_on(rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Terminal>) -> bool {
     let table = symbol_table();
     let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
@@ -311,6 +312,7 @@ pub fn reduce_on(rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Termin
     }
 }
 
+#[must_use] 
 pub const fn priority_of(
     _rhs: &Rhs<Terminal, NonTerminal, ()>,
     _lookahead: Option<&Terminal>,

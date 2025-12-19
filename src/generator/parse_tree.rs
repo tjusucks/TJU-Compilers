@@ -13,6 +13,7 @@ pub struct Span {
 }
 
 impl Span {
+    #[must_use] 
     pub const fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
         Self {
             start,
@@ -54,6 +55,7 @@ pub enum Symbol {
 }
 
 impl ParseTreeNode {
+    #[must_use] 
     pub const fn non_terminal(symbol: NonTerminal, children: Vec<Self>, span: Span) -> Self {
         Self::NonTerminal {
             symbol,
@@ -62,6 +64,7 @@ impl ParseTreeNode {
         }
     }
 
+    #[must_use] 
     pub const fn terminal(token: Terminal, lexeme: String, span: Span) -> Self {
         Self::Terminal {
             token,
@@ -70,6 +73,7 @@ impl ParseTreeNode {
         }
     }
 
+    #[must_use] 
     pub const fn is_empty(&self) -> bool {
         match self {
             Self::Terminal { .. } => true,
@@ -77,10 +81,11 @@ impl ParseTreeNode {
         }
     }
 
+    #[must_use] 
     pub fn get_lexeme(&self) -> String {
         match self {
             Self::Terminal { lexeme, .. } => lexeme.clone(),
-            Self::NonTerminal { .. } => "".to_string(),
+            Self::NonTerminal { .. } => String::new(),
         }
     }
 
@@ -100,24 +105,26 @@ impl ParseTreeNode {
                 } else if *token == epsilon {
                     Ok(Symbol::Epsilon)
                 } else {
-                    Err(format!("Unexpected terminal token: {:?}", token))
+                    Err(format!("Unexpected terminal token: {token:?}"))
                 }
             }
             Self::NonTerminal { symbol, .. } => Err(format!(
-                "Cannot convert non-terminal symbol to symbol: {:?}",
-                symbol
+                "Cannot convert non-terminal symbol to symbol: {symbol:?}"
             )),
         }
     }
 
+    #[must_use] 
     pub fn is_terminal(&self, token: Terminal) -> bool {
         matches!(self, Self::Terminal { token: t, .. } if *t == token)
     }
 
+    #[must_use] 
     pub fn is_non_terminal(&self, symbol: NonTerminal) -> bool {
         matches!(self, Self::NonTerminal { symbol: s, .. } if *s == symbol)
     }
 
+    #[must_use] 
     pub fn get_children(&self) -> &[Self] {
         match self {
             Self::Terminal { .. } => &[],
@@ -125,6 +132,7 @@ impl ParseTreeNode {
         }
     }
 
+    #[must_use] 
     pub fn collect_children(self) -> Vec<Self> {
         match self {
             Self::Terminal { .. } => Vec::new(),
@@ -214,10 +222,10 @@ impl ParseTreeNode {
 impl Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Symbol::Literal(str) | Symbol::Regex(str) | Symbol::Identifier(str) => {
-                write!(f, "{}", str)
+            Self::Literal(str) | Self::Regex(str) | Self::Identifier(str) => {
+                write!(f, "{str}")
             }
-            Symbol::Epsilon => write!(f, "EPSILON"),
+            Self::Epsilon => write!(f, "EPSILON"),
         }
     }
 }

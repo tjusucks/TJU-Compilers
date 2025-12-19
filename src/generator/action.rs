@@ -10,7 +10,14 @@ pub struct ParseTreeAction {
     node_stack: Vec<ParseTreeNode>,
 }
 
+impl Default for ParseTreeAction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ParseTreeAction {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             node_stack: Vec::new(),

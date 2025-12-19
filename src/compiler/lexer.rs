@@ -10,6 +10,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
+    #[must_use] 
     pub fn new(token_rules: &TokenRules) -> Self {
         let mut builder = RecognizerBuilder::new();
         for rule in token_rules {

@@ -17,6 +17,7 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
+    #[must_use] 
     pub fn from_maps(
         terminals: HashMap<String, Terminal>,
         non_terminals: HashMap<String, NonTerminal>,
@@ -38,34 +39,36 @@ impl SymbolTable {
     }
 
     pub fn insert_non_terminal(&mut self, non_terminal_name: String) -> NonTerminal {
-        if !self.non_terminals.contains_key(&non_terminal_name) {
+        if self.non_terminals.contains_key(&non_terminal_name) {
+            self.non_terminals[&non_terminal_name]
+        } else {
             let non_terminal_id = self.non_terminals.len();
             let non_terminal = NonTerminal(non_terminal_id);
             self.non_terminals
                 .insert(non_terminal_name.clone(), non_terminal);
             self.non_terminal_names.push(non_terminal_name);
             non_terminal
-        } else {
-            self.non_terminals[&non_terminal_name]
         }
     }
 
     pub fn insert_terminal(&mut self, terminal_name: String) -> Terminal {
-        if !self.terminals.contains_key(&terminal_name) {
+        if self.terminals.contains_key(&terminal_name) {
+            self.terminals[&terminal_name]
+        } else {
             let terminal_id = self.terminals.len();
             let terminal = Terminal(terminal_id);
             self.terminals.insert(terminal_name.clone(), terminal);
             self.terminal_names.push(terminal_name);
             terminal
-        } else {
-            self.terminals[&terminal_name]
         }
     }
 
+    #[must_use] 
     pub fn get_non_terminal_id(&self, non_terminal: &str) -> Option<NonTerminal> {
         self.non_terminals.get(non_terminal).copied()
     }
 
+    #[must_use] 
     pub fn get_terminal_id(&self, terminal: &str) -> Option<Terminal> {
         self.terminals.get(terminal).copied()
     }

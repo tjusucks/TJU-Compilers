@@ -13,21 +13,53 @@ use crate::generator::symbol_table::symbol_table;
 
 #[derive(Debug)]
 pub struct GeneratorResult {
+    /// Symbol table containing all terminals and non terminals.
     pub symbol_table: SymbolTable,
+
+    /// Grammar rules containing productions for non terminals.
     pub grammar_rules: GrammarRules,
+
+    /// Token rules containing regex patterns for terminals.
     pub token_rules: TokenRules,
+
+    /// Parse tree built from the input.
     pub parse_tree: ParseTreeNode,
 }
 
 #[derive(Default)]
 pub struct GeneratorAction {
-    pub symbol_table: SymbolTable,
-    pub grammar_rules: GrammarRules,
-    pub token_rules: TokenRules,
-    productions: HashMap<String, Vec<Vec<Symbol>>>,
+    /// The node stack used to build the parse tree.
     node_stack: Vec<ParseTreeNode>,
+
+    /// Productions collected during parsing.
+    productions: HashMap<String, Vec<Vec<Symbol>>>,
+
+    /// Regex patterns collected for terminals.
+    regex_patterns: HashMap<String, String>,
+
+    /// Literal patterns collected for terminals.
+    literal_patterns: HashMap<String, Vec<String>>,
+
+    /// Intermediate results for generating the grammar rules.
+    rules: HashMap<NonTerminal, Vec<Vec<String>>>,
+
+    /// Set of non terminal names that appear on the LHS of any production (candidates for start symbol).
+    lhs_non_terminals: HashSet<String>,
+
+    /// Set of non terminal names that appear on the RHS of any production (cannot be start symbol).
+    rhs_non_terminals: HashSet<String>,
+
+    /// Symbol table containing all terminals and non terminals.
+    symbol_table: SymbolTable,
+
+    /// Grammar rules containing productions for non terminals.
+    grammar_rules: GrammarRules,
+
+    /// Token rules containing regex patterns for terminals.
+    token_rules: TokenRules,
 }
 
+/// Unquote a string, removing surrounding quotes if they are present.
 fn unquote(str: &str) -> &str {
     if str.len() >= 2
         && (str.starts_with('"') && str.ends_with('"')
@@ -39,6 +71,7 @@ fn unquote(str: &str) -> &str {
     }
 }
 
+/// Strip surrounding slashes from a regex pattern.
 fn strip(pattern: &str) -> &str {
     if pattern.starts_with('/') && pattern.ends_with('/') && pattern.len() > 2 {
         &pattern[1..pattern.len() - 1]
@@ -47,6 +80,7 @@ fn strip(pattern: &str) -> &str {
     }
 }
 
+/// Combine multiple literal patterns into a single regex pattern.
 fn combine_literals(literals: &[String]) -> String {
     let patterns: Vec<String> = literals
         .iter()
@@ -60,43 +94,27 @@ fn combine_literals(literals: &[String]) -> String {
     }
 }
 
+/// Insert a terminal into the symbol table, ensuring uniqueness by appending a number if necessary.
 fn insert_unique(symbol_table: &mut SymbolTable, base: &str) -> Terminal {
     let mut name = base.to_string();
     let mut counter = 0;
     while symbol_table.get_terminal_id(&name).is_some() {
         counter += 1;
-        name = format!("{}{}", base, counter);
+        name = format!("{base}{counter}");
     }
-    symbol_table.insert_terminal(name.clone())
+    symbol_table.insert_terminal(name)
 }
 
-fn convert_symbol(
-    symbol: Symbol,
-    symbol_table: &SymbolTable,
-) -> Result<lalr::Symbol<Terminal, NonTerminal>, String> {
-    match symbol {
-        Symbol::Literal(literal) => {
-            let terminal = symbol_table.get_terminal_id(unquote(&literal)).unwrap();
-            Ok(lalr::Symbol::Terminal(terminal))
-        }
-        Symbol::Regex(_) => Err("Regexes are not in symbol table".to_string()),
-        Symbol::Identifier(identifier) => {
-            if let Some(non_terminal) = symbol_table.get_non_terminal_id(&identifier) {
-                Ok(lalr::Symbol::Nonterminal(non_terminal))
-            } else if let Some(terminal) = symbol_table.get_terminal_id(&identifier) {
-                Ok(lalr::Symbol::Terminal(terminal))
-            } else {
-                Err(format!(
-                    "Identifier not found in symbol table: {}",
-                    identifier
-                ))
-            }
-        }
-        Symbol::Epsilon => Err("Epsilon is not in symbol table".to_string()),
-    }
+/// Converts a Symbol vector into a string vector.
+fn symbols_to_strings(symbols: &[Vec<Symbol>]) -> Vec<Vec<String>> {
+    symbols
+        .iter()
+        .map(|symbols| symbols.iter().map(ToString::to_string).collect())
+        .collect()
 }
 
 impl GeneratorResult {
+    #[must_use]
     pub const fn new(
         symbol_table: SymbolTable,
         grammar_rules: GrammarRules,
@@ -114,8 +132,6 @@ impl GeneratorResult {
 
 impl GeneratorAction {
     fn add_production(&mut self, lhs: String, rhs: Vec<Vec<Symbol>>) {
-        println!("Adding production: {} -> {:?}", lhs, rhs);
-
         match self.productions.entry(lhs) {
             Entry::Occupied(mut entry) => {
                 entry.get_mut().extend(rhs);
@@ -128,12 +144,7 @@ impl GeneratorAction {
 
     fn generate_result(&mut self) {
         // Collect all symbols and classify them.
-        let mut regex_patterns = HashMap::new();
-        let mut literal_patterns: HashMap<String, Vec<String>> = HashMap::new();
-        let mut rules: HashMap<NonTerminal, Vec<Vec<String>>> = HashMap::new();
-        let mut lhs_nonterminals: HashSet<String> = HashSet::new();
-        let mut rhs_nonterminals: HashSet<String> = HashSet::new();
-        for (lhs, rhs_alternatives) in self.productions.iter() {
+        for (lhs, rhs_alternatives) in &self.productions {
             let mut is_terminal = true;
 
             // Check if this rule defines a terminal or nonterminal.
@@ -141,46 +152,55 @@ impl GeneratorAction {
                 for symbol in symbols {
                     match symbol {
                         Symbol::Literal(literal) => {
-                            // Literals are OK for terminals.
+                            // Literal is terminal.
                             let literal = unquote(literal).to_string();
-                            if self.symbol_table.get_terminal_id(&literal).is_none() {
-                                let terminal = self.symbol_table.insert_terminal(literal.clone());
-                                self.token_rules.push(TokenRule {
-                                    kind: terminal,
-                                    regex: escape(&literal),
-                                    skip: false,
-                                });
-                            }
+                            let terminal = self.symbol_table.insert_terminal(literal.clone());
 
-                            if let Some(literal_pattern) = literal_patterns.get_mut(lhs) {
-                                literal_pattern.push(literal.clone());
-                            } else {
-                                literal_patterns.insert(lhs.clone(), vec![literal.clone()]);
-                            }
+                            // Add token rule for the literal.
+                            self.token_rules.push(TokenRule {
+                                kind: terminal,
+                                regex: escape(&literal),
+                                skip: false,
+                            });
+
+                            // Add the literal to the literal patterns of the LHS.
+                            self.literal_patterns
+                                .entry(lhs.clone())
+                                .or_default()
+                                .push(literal.clone());
                         }
                         Symbol::Regex(regex) => {
-                            if regex_patterns.contains_key(lhs) {
-                                panic!("Multiple regex patterns for {}", lhs);
-                            }
-                            regex_patterns.insert(lhs.clone(), regex.clone());
+                            // Terminal can only be defined by a single regex pattern.
+                            assert!(
+                                !self.regex_patterns.contains_key(lhs),
+                                "Multiple regex patterns for {lhs}"
+                            );
+
+                            // Add the regex to regex patterns of the LHS.
+                            self.regex_patterns.insert(lhs.clone(), regex.clone());
                         }
                         Symbol::Identifier(identifier) => {
-                            // If RHS contains identifiers, LHS is a nonterminal.
+                            // If RHS contains identifiers, LHS is a non terminal.
                             is_terminal = false;
-                            rhs_nonterminals.insert(identifier.to_string());
+
+                            // Add the identifier to the RHS non terminals set.
+                            self.rhs_non_terminals.insert(identifier.clone());
                         }
-                        Symbol::Epsilon => {
-                            // Epsilon is OK for both.
-                        }
+                        Symbol::Epsilon => {}
                     }
                 }
             }
 
             // Build symbol table.
             if is_terminal {
+                // Add terminal to the symbol table.
                 let terminal = self.symbol_table.insert_terminal(lhs.clone());
-                let regex_pattern = regex_patterns.get(lhs);
-                let literal_pattern = literal_patterns.get(lhs);
+
+                // Get the collected patterns for the LHS terminal.
+                let regex_pattern = self.regex_patterns.get(lhs);
+                let literal_pattern = self.literal_patterns.get(lhs);
+
+                // Add token rule for the terminal.
                 if regex_pattern.is_some() && literal_pattern.is_some() {
                     panic!("Regex patterns and literal patterns cannot be used together");
                 } else if regex_pattern.is_some() {
@@ -197,20 +217,19 @@ impl GeneratorAction {
                     });
                 }
             } else {
-                println!("Production: {} -> {:?}", lhs, rhs_alternatives);
-                // Add to start symbol candidates.
-                lhs_nonterminals.insert(lhs.to_string());
+                // Add to LHS non terminals set as start symbol candidate.
+                self.lhs_non_terminals.insert(lhs.clone());
+
+                // Add non terminal to the symbol table.
                 let non_terminal = self.symbol_table.insert_non_terminal(lhs.clone());
-                if regex_patterns.contains_key(lhs) {
-                    panic!("Regex patterns are not allowed for nonterminals");
-                }
+                assert!(
+                    !self.regex_patterns.contains_key(lhs),
+                    "Regex patterns are not allowed for non terminals"
+                );
 
-                let string_rhs: Vec<Vec<String>> = rhs_alternatives
-                    .iter()
-                    .map(|symbols| symbols.iter().map(|s| s.to_string()).collect())
-                    .collect();
-
-                match rules.entry(non_terminal) {
+                // Add the production to the grammar rules.
+                let string_rhs = symbols_to_strings(rhs_alternatives);
+                match self.rules.entry(non_terminal) {
                     Entry::Occupied(mut entry) => {
                         entry.get_mut().extend(string_rhs);
                     }
@@ -236,39 +255,42 @@ impl GeneratorAction {
         });
 
         // Build grammar rules.
-        for (lhs, rhs_alternatives) in rules {
+        for (lhs, rhs_alternatives) in &self.rules {
             for rhs in rhs_alternatives {
                 let mut lalr_symbols: Vec<lalr::Symbol<Terminal, NonTerminal>> = Vec::new();
                 for symbol in rhs {
-                    let symbol = unquote(&symbol);
+                    let symbol = unquote(symbol);
                     if let Some(non_terminal) = self.symbol_table.get_non_terminal_id(symbol) {
-                        lalr_symbols.push(lalr::Symbol::Nonterminal(non_terminal))
+                        lalr_symbols.push(lalr::Symbol::Nonterminal(non_terminal));
                     } else if let Some(terminal) = self.symbol_table.get_terminal_id(symbol) {
                         lalr_symbols.push(lalr::Symbol::Terminal(terminal));
                     } else {
-                        panic!("Symbol not found in symbol table: {}", symbol);
+                        panic!("Symbol not found in symbol table: {symbol}");
                     }
                 }
                 self.grammar_rules.rules.push(GrammarRule {
-                    non_terminal: lhs,
+                    non_terminal: *lhs,
                     rhs: lalr_symbols,
                 });
             }
         }
-        let start_symbol: HashSet<String> = lhs_nonterminals
-            .difference(&rhs_nonterminals)
+
+        // Determine the start symbol by calculating set difference.
+        let start_symbols: HashSet<String> = self
+            .lhs_non_terminals
+            .difference(&self.rhs_non_terminals)
             .cloned()
             .collect();
-        if start_symbol.is_empty() {
-            panic!("No start symbol found");
-        } else if start_symbol.len() > 1 {
-            panic!("Multiple start symbols found");
-        } else {
-            let start_symbol = self
-                .symbol_table
-                .get_non_terminal_id(start_symbol.iter().next().unwrap())
-                .unwrap();
-            self.grammar_rules.start_symbol = start_symbol;
+
+        // There should be exactly one start symbol.
+        match start_symbols.len() {
+            0 => panic!("No start symbol found"),
+            1 => {
+                let start_name = start_symbols.iter().next().unwrap();
+                let start_symbol = self.symbol_table.get_non_terminal_id(start_name).unwrap();
+                self.grammar_rules.start_symbol = start_symbol;
+            }
+            _ => panic!("Multiple start symbols found: {:?}", start_symbols),
         }
     }
 }
@@ -287,11 +309,10 @@ impl Action for GeneratorAction {
         let expression = table.get_non_terminal_id("Expression").unwrap();
         let term = table.get_non_terminal_id("Term").unwrap();
         let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
-
         let length = rhs.syms.len();
 
         if non_terminal == grammar || non_terminal == grammar_repetition || non_terminal == atom {
-            // Remove these nonterminals from the parse tree.
+            // Remove these non_terminals from the parse tree.
         } else if non_terminal == list
             || non_terminal == expression
             || non_terminal == term
@@ -329,6 +350,7 @@ impl Action for GeneratorAction {
             self.node_stack.push(new_node);
         }
 
+        // Collect productions from the parse tree.
         if non_terminal == table.get_non_terminal_id("Rule").unwrap() {
             let node = self.node_stack.last().unwrap();
             let children = node.get_children();
@@ -346,14 +368,11 @@ impl Action for GeneratorAction {
     }
 
     fn on_accept(&mut self) -> Self::ParseResult {
-        println!("Productions: {:?}", self.productions);
         self.generate_result();
-
         let table = symbol_table();
-        let grammar_nt = table.get_non_terminal_id("Grammar").unwrap();
-
+        let grammar = table.get_non_terminal_id("Grammar").unwrap();
         let children = std::mem::take(&mut self.node_stack);
-        let root_node = ParseTreeNode::non_terminal(grammar_nt, children, Span::new(0, 0, 1, 1));
+        let root_node = ParseTreeNode::non_terminal(grammar, children, Span::new(0, 0, 1, 1));
         GeneratorResult::new(
             std::mem::take(&mut self.symbol_table),
             std::mem::take(&mut self.grammar_rules),
