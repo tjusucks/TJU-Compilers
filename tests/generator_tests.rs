@@ -1,10 +1,10 @@
+use rustcc::common::action::DefaultAction;
 use rustcc::common::parse_table::ParseTable;
 use rustcc::compiler::lexer::Lexer;
 use rustcc::compiler::parser::Parser;
-use rustcc::generator::generator_action::GeneratorAction;
+use rustcc::generator::action::GeneratorAction;
 use rustcc::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use rustcc::generator::processor::Processor;
-use rustcc::generator::symbol_table::symbol_table;
 use rustcc::generator::token_rules::token_rules;
 
 #[test]
@@ -21,32 +21,52 @@ fn test_generated_lexer_tokenization() {
         @drop       = whitespace, strings  # Drop anonymous whitespace and (anonymous) string literals.
 
         # Grammar.
-        grammar     = directive | rule
+        # grammar = { directive | rule }
+        grammar = grammar directive
+                | grammar rule
+                | EPSILON
 
         # Directive.
-        directive   = "@" IDENTIFIER "=" value
-        value       = LITERAL | REGEX | list
-        list        = IDENTIFIER "," IDENTIFIER
+        directive = "@" IDENTIFIER "=" value
+        value = LITERAL | REGEX | list
+
+        # list = IDENTIFIER { "," IDENTIFIER }
+        list = list "," IDENTIFIER | IDENTIFIER
 
         # EBNF constructs.
-        rule        = IDENTIFIER "=" expression
-        expression  = term "|" term
-        term        = factor factor | EMPTY
-        factor      = WHITESPACE atom WHITESPACE lookahead
+        rule = IDENTIFIER "=" expression
+
+        # expression = term { "|" term }
+        expression = expression "|" term | term
+
+        # term = factor { factor } | EMPTY
+        term = term factor | factor | EMPTY
+
+        # factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
+        factor = factor_repetition atom factor_repetition lookahead
+               | factor_repetition atom factor_repetition
+        factor_repetition = factor_repetition WHITESPACE | EPSILON
+
+        # IDENTIFIER ! "=" negative lookahead is handled by the parser.
         atom        = LITERAL
                     | IDENTIFIER
                     | REGEX
                     | group
                     | optional
                     | repetition
+
         group       = "(" expression ")"
         optional    = "[" expression "]"
         repetition  = "{" expression "}"
-        lookahead   = POSITIVE_LOOKAHEAD
-                    | NEGATIVE_LOOKAHEAD
-                    | POSITIVE_LOOKBEHIND
-                    | NEGATIVE_LOOKBEHIND
-                    factor
+
+        # lookahead = (
+        #     POSITIVE_LOOKAHEAD | NEGATIVE_LOOKAHEAD | POSITIVE_LOOKBEHIND | NEGATIVE_LOOKBEHIN
+        # ) factor
+        lookahead = lookahead_group factor
+        lookahead_group = POSITIVE_LOOKAHEAD
+                        | NEGATIVE_LOOKAHEAD
+                        | POSITIVE_LOOKBEHIND
+                        | NEGATIVE_LOOKBEHIND
 
         # Look ahead / behind.
         POSITIVE_LOOKAHEAD  = "&"
@@ -66,64 +86,31 @@ fn test_generated_lexer_tokenization() {
         IDENTIFIER  = /[A-Za-z_][A-Za-z_0-9]*/~
         "#;
 
+    // Build the lexer and parser.
     let token_rules = token_rules();
     let lexer = Lexer::new(token_rules);
     let grammar_rules = grammar_rules();
     let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
     let mut parser = Parser::new(parse_table.parse_table, GeneratorAction::default());
 
+    // Tokenize and parse the input.
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
     let result = parser.parse(processed).unwrap();
-
     println!("{}", result.parse_tree);
 
-    println!();
-    println!("{:?}", result.symbol_table);
-
-    // println!("{:?}", result.grammar_rules);
-    println!("Generated grammar rules");
-    println!(
-        "Start symbol: {}",
-        result
-            .symbol_table
-            .get_non_terminal_name(result.grammar_rules.start_symbol)
-            .unwrap()
+    // Build the lexer and parser based on the result.
+    let lexer = Lexer::new(&result.token_rules);
+    let grammar_rules = &result.grammar_rules;
+    let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
+    let mut parser = Parser::new(
+        parse_table.parse_table,
+        DefaultAction::new(result.grammar_rules.start_symbol),
     );
 
-    for rule in &result.grammar_rules.rules {
-        let lhs_name = result
-            .symbol_table
-            .get_non_terminal_name(rule.non_terminal)
-            .unwrap_or("UNKNOWN_NONTERMINAL");
-
-        let rhs_names: Vec<String> = rule
-            .rhs
-            .iter()
-            .map(|sym| match sym {
-                lalr::Symbol::Terminal(t) => result
-                    .symbol_table
-                    .get_terminal_name(*t)
-                    .unwrap_or("UNKNOWN_TERMINAL")
-                    .to_string(),
-                lalr::Symbol::Nonterminal(nt) => result
-                    .symbol_table
-                    .get_non_terminal_name(*nt)
-                    .unwrap_or("UNKNOWN_NONTERMINAL")
-                    .to_string(),
-            })
-            .collect();
-
-        println!("Rule: LHS: {}, RHS: {:?}", lhs_name, rhs_names);
-    }
-
-    println!("Generated token rules");
-    for rule in &result.token_rules {
-        println!(
-            "Rule: Kind: {:?}, Regex: {}, Skip: {}",
-            result.symbol_table.get_terminal_name(rule.kind),
-            rule.regex,
-            rule.skip
-        );
-    }
+    // Test the generated lexer and parser.
+    let tokens = lexer.tokenize(input);
+    let processed = Processor::process(tokens);
+    let result = parser.parse(processed).unwrap();
+    println!("{}", result);
 }

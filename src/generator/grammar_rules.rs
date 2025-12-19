@@ -35,17 +35,13 @@ pub fn grammar_rules() -> &'static GrammarRules {
         let left_identifier = table.get_terminal_id("LeftIdentifier").unwrap();
 
         // NonTerminal symbols.
-        let grammar_nt = table.get_non_terminal_id("Grammar").unwrap();
-        let grammar_repetition = table.get_non_terminal_id("GrammarRepetition").unwrap();
+        let grammar = table.get_non_terminal_id("Grammar").unwrap();
         let directive = table.get_non_terminal_id("Directive").unwrap();
         let value = table.get_non_terminal_id("Value").unwrap();
         let list = table.get_non_terminal_id("List").unwrap();
-        let list_repetition = table.get_non_terminal_id("ListRepetition").unwrap();
         let rule = table.get_non_terminal_id("Rule").unwrap();
         let expression = table.get_non_terminal_id("Expression").unwrap();
-        let expression_repetition = table.get_non_terminal_id("ExpressionRepetition").unwrap();
         let term = table.get_non_terminal_id("Term").unwrap();
-        let term_repetition = table.get_non_terminal_id("TermRepetition").unwrap();
         let factor = table.get_non_terminal_id("Factor").unwrap();
         let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
         let atom = table.get_non_terminal_id("Atom").unwrap();
@@ -59,22 +55,15 @@ pub fn grammar_rules() -> &'static GrammarRules {
 
         // grammar = { directive | rule }
         rules.push(Rule {
-            non_terminal: grammar_nt,
-            rhs: vec![
-                Symbol::Nonterminal(grammar_nt),
-                Symbol::Nonterminal(grammar_repetition),
-            ],
+            non_terminal: grammar,
+            rhs: vec![Symbol::Nonterminal(grammar), Symbol::Nonterminal(directive)],
         });
         rules.push(Rule {
-            non_terminal: grammar_repetition,
-            rhs: vec![Symbol::Nonterminal(directive)],
+            non_terminal: grammar,
+            rhs: vec![Symbol::Nonterminal(grammar), Symbol::Nonterminal(rule)],
         });
         rules.push(Rule {
-            non_terminal: grammar_repetition,
-            rhs: vec![Symbol::Nonterminal(rule)],
-        });
-        rules.push(Rule {
-            non_terminal: grammar_nt,
+            non_terminal: grammar,
             rhs: vec![],
         });
 
@@ -105,10 +94,6 @@ pub fn grammar_rules() -> &'static GrammarRules {
 
         // list = IDENTIFIER { "," IDENTIFIER }
         rules.push(Rule {
-            non_terminal: list_repetition,
-            rhs: vec![Symbol::Nonterminal(list)],
-        });
-        rules.push(Rule {
             non_terminal: list,
             rhs: vec![
                 Symbol::Nonterminal(list),
@@ -133,10 +118,6 @@ pub fn grammar_rules() -> &'static GrammarRules {
 
         // expression = term { "|" term }
         rules.push(Rule {
-            non_terminal: expression_repetition,
-            rhs: vec![Symbol::Nonterminal(expression)],
-        });
-        rules.push(Rule {
             non_terminal: expression,
             rhs: vec![
                 Symbol::Nonterminal(expression),
@@ -150,10 +131,6 @@ pub fn grammar_rules() -> &'static GrammarRules {
         });
 
         // term = factor { factor } | EMPTY
-        rules.push(Rule {
-            non_terminal: term_repetition,
-            rhs: vec![Symbol::Nonterminal(term)],
-        });
         rules.push(Rule {
             non_terminal: term,
             rhs: vec![Symbol::Nonterminal(term), Symbol::Nonterminal(factor)],
@@ -279,13 +256,13 @@ pub fn grammar_rules() -> &'static GrammarRules {
         });
 
         GrammarRules {
-            start_symbol: grammar_nt,
+            start_symbol: grammar,
             rules,
         }
     })
 }
 
-#[must_use] 
+#[must_use]
 pub fn reduce_on(rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Terminal>) -> bool {
     let table = symbol_table();
     let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
@@ -312,7 +289,7 @@ pub fn reduce_on(rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Termin
     }
 }
 
-#[must_use] 
+#[must_use]
 pub const fn priority_of(
     _rhs: &Rhs<Terminal, NonTerminal, ()>,
     _lookahead: Option<&Terminal>,

@@ -1,7 +1,7 @@
 use crate::common::parse_table::ParseTable;
 use crate::compiler::lexer::Lexer;
 use crate::compiler::parser::Parser;
-use crate::generator::generator_action::GeneratorAction;
+use crate::generator::action::GeneratorAction;
 use crate::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use crate::generator::processor::Processor;
 use crate::generator::token_rules::token_rules;

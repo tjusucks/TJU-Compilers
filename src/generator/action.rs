@@ -184,7 +184,9 @@ impl GeneratorAction {
                             is_terminal = false;
 
                             // Add the identifier to the RHS non terminals set.
-                            self.rhs_non_terminals.insert(identifier.clone());
+                            if identifier != lhs {
+                                self.rhs_non_terminals.insert(identifier.clone());
+                            }
                         }
                         Symbol::Epsilon => {}
                     }
