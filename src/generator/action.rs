@@ -260,14 +260,16 @@ impl GeneratorAction {
         for (lhs, rhs_alternatives) in &self.rules {
             for rhs in rhs_alternatives {
                 let mut lalr_symbols: Vec<lalr::Symbol<Terminal, NonTerminal>> = Vec::new();
-                for symbol in rhs {
-                    let symbol = unquote(symbol);
-                    if let Some(non_terminal) = self.symbol_table.get_non_terminal_id(symbol) {
-                        lalr_symbols.push(lalr::Symbol::Nonterminal(non_terminal));
-                    } else if let Some(terminal) = self.symbol_table.get_terminal_id(symbol) {
-                        lalr_symbols.push(lalr::Symbol::Terminal(terminal));
-                    } else {
-                        panic!("Symbol not found in symbol table: {symbol}");
+                if rhs.len() != 1 || rhs[0] != "EPSILON" {
+                    for symbol in rhs {
+                        let symbol = unquote(symbol);
+                        if let Some(non_terminal) = self.symbol_table.get_non_terminal_id(symbol) {
+                            lalr_symbols.push(lalr::Symbol::Nonterminal(non_terminal));
+                        } else if let Some(terminal) = self.symbol_table.get_terminal_id(symbol) {
+                            lalr_symbols.push(lalr::Symbol::Terminal(terminal));
+                        } else {
+                            panic!("Symbol not found in symbol table: {symbol}");
+                        }
                     }
                 }
                 self.grammar_rules.rules.push(GrammarRule {

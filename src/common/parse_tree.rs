@@ -80,20 +80,15 @@ impl ParseTreeNode {
         }
     }
 
-    pub fn fmt(&self, fmt: &mut fmt::Formatter<'_>, symbol_table: &SymbolTable) -> fmt::Result {
-        fn fmt_sexpr(
-            node: &ParseTreeNode,
-            fmt: &mut fmt::Formatter<'_>,
-            indent: usize,
-            table: &SymbolTable,
-        ) -> fmt::Result {
+    pub fn to_string(&self, symbol_table: &SymbolTable) -> String {
+        fn fmt_sexpr(node: &ParseTreeNode, buf: &mut String, indent: usize, table: &SymbolTable) {
             let pad = "  ".repeat(indent);
             match node {
                 ParseTreeNode::Terminal { token, lexeme, .. } => {
                     let terminal_name = table
                         .get_terminal_name(*token)
                         .unwrap_or("UNKNOWN_TERMINAL");
-                    writeln!(fmt, "{pad}({terminal_name} \"{lexeme}\")")
+                    buf.push_str(&format!("{pad}({terminal_name} \"{lexeme}\")\n"));
                 }
                 ParseTreeNode::NonTerminal {
                     symbol, children, ..
@@ -101,15 +96,17 @@ impl ParseTreeNode {
                     let nonterminal_name = table
                         .get_non_terminal_name(*symbol)
                         .unwrap_or("UNKNOWN_NONTERMINAL");
-                    writeln!(fmt, "{pad}({nonterminal_name}")?;
+                    buf.push_str(&format!("{pad}({nonterminal_name}\n"));
                     for child in children {
-                        fmt_sexpr(child, fmt, indent + 1, table)?;
+                        fmt_sexpr(child, buf, indent + 1, table);
                     }
-                    writeln!(fmt, "{pad})")
+                    buf.push_str(&format!("{pad})\n"));
                 }
             }
         }
-        fmt_sexpr(self, fmt, 0, symbol_table)
+        let mut buf = String::new();
+        fmt_sexpr(self, &mut buf, 0, symbol_table);
+        buf
     }
 
     #[must_use]

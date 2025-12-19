@@ -16,8 +16,20 @@ pub struct SymbolTable {
     terminal_names: Vec<String>,
 }
 
+impl Terminal {
+    pub fn to_string(self, symbol_table: &SymbolTable) -> Option<&str> {
+        symbol_table.get_terminal_name(self)
+    }
+}
+
+impl NonTerminal {
+    pub fn to_string(self, symbol_table: &SymbolTable) -> Option<&str> {
+        symbol_table.get_non_terminal_name(self)
+    }
+}
+
 impl SymbolTable {
-    #[must_use] 
+    #[must_use]
     pub fn from_maps(
         terminals: HashMap<String, Terminal>,
         non_terminals: HashMap<String, NonTerminal>,
@@ -63,12 +75,12 @@ impl SymbolTable {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_non_terminal_id(&self, non_terminal: &str) -> Option<NonTerminal> {
         self.non_terminals.get(non_terminal).copied()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_terminal_id(&self, terminal: &str) -> Option<Terminal> {
         self.terminals.get(terminal).copied()
     }
