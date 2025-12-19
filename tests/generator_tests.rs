@@ -70,20 +70,8 @@ fn test_generated_lexer_tokenization() {
     let lexer = Lexer::new(token_rules);
     let grammar_rules = grammar_rules();
     let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
-
     let mut parser = Parser::new(parse_table.parse_table, GeneratorAction::default());
 
-    let tokens = lexer.tokenize(input);
-
-    for token in tokens {
-        println!(
-            "{:?}: {}",
-            symbol_table().get_terminal_name(token.kind),
-            token.text
-        );
-    }
-
-    let lexer = Lexer::new(token_rules);
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
     let result = parser.parse(processed).unwrap();
@@ -92,7 +80,42 @@ fn test_generated_lexer_tokenization() {
 
     println!();
     println!("{:?}", result.symbol_table);
-    println!("{:?}", result.grammar_rules);
+
+    // println!("{:?}", result.grammar_rules);
+    println!("Generated grammar rules");
+    println!(
+        "Start symbol: {}",
+        result
+            .symbol_table
+            .get_non_terminal_name(result.grammar_rules.start_symbol)
+            .unwrap()
+    );
+
+    for rule in &result.grammar_rules.rules {
+        let lhs_name = result
+            .symbol_table
+            .get_non_terminal_name(rule.non_terminal)
+            .unwrap_or("UNKNOWN_NONTERMINAL");
+
+        let rhs_names: Vec<String> = rule
+            .rhs
+            .iter()
+            .map(|sym| match sym {
+                lalr::Symbol::Terminal(t) => result
+                    .symbol_table
+                    .get_terminal_name(*t)
+                    .unwrap_or("UNKNOWN_TERMINAL")
+                    .to_string(),
+                lalr::Symbol::Nonterminal(nt) => result
+                    .symbol_table
+                    .get_non_terminal_name(*nt)
+                    .unwrap_or("UNKNOWN_NONTERMINAL")
+                    .to_string(),
+            })
+            .collect();
+
+        println!("Rule: LHS: {}, RHS: {:?}", lhs_name, rhs_names);
+    }
 
     println!("Generated token rules");
     for rule in &result.token_rules {
@@ -101,26 +124,6 @@ fn test_generated_lexer_tokenization() {
             result.symbol_table.get_terminal_name(rule.kind),
             rule.regex,
             rule.skip
-        );
-    }
-
-    println!("Correct token rules");
-    for rule in token_rules {
-        println!(
-            "Rule: Kind: {:?}, Regex: {}, Skip: {}",
-            symbol_table().get_terminal_name(rule.kind),
-            rule.regex,
-            rule.skip
-        );
-    }
-
-    let lexer = Lexer::new(&result.token_rules);
-    let tokens = lexer.tokenize(input);
-    for token in tokens {
-        println!(
-            "{:?}: {}",
-            result.symbol_table.get_terminal_name(token.kind),
-            token.text
         );
     }
 }

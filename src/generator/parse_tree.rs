@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 
 use crate::common::symbol_table::{NonTerminal, Terminal};
 use crate::generator::symbol_table::symbol_table;
@@ -207,6 +207,17 @@ impl ParseTreeNode {
             children[1].to_symbol()
         } else {
             children[0].to_symbol()
+        }
+    }
+}
+
+impl Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Symbol::Literal(str) | Symbol::Regex(str) | Symbol::Identifier(str) => {
+                write!(f, "{}", str)
+            }
+            Symbol::Epsilon => write!(f, "EPSILON"),
         }
     }
 }
