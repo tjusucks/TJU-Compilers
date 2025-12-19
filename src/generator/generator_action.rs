@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 
 use regex::escape;
 use relex::Token;
@@ -131,6 +131,8 @@ impl GeneratorAction {
         let mut regex_patterns = HashMap::new();
         let mut literal_patterns: HashMap<String, Vec<String>> = HashMap::new();
         let mut rules: HashMap<NonTerminal, Vec<Vec<String>>> = HashMap::new();
+        let mut lhs_nonterminals: HashSet<String> = HashSet::new();
+        let mut rhs_nonterminals: HashSet<String> = HashSet::new();
         for (lhs, rhs_alternatives) in self.productions.iter() {
             let mut is_terminal = true;
 
@@ -162,9 +164,10 @@ impl GeneratorAction {
                             }
                             regex_patterns.insert(lhs.clone(), regex.clone());
                         }
-                        Symbol::Identifier(_) => {
+                        Symbol::Identifier(identifier) => {
                             // If RHS contains identifiers, LHS is a nonterminal.
                             is_terminal = false;
+                            rhs_nonterminals.insert(identifier.to_string());
                         }
                         Symbol::Epsilon => {
                             // Epsilon is OK for both.
@@ -195,6 +198,8 @@ impl GeneratorAction {
                 }
             } else {
                 println!("Production: {} -> {:?}", lhs, rhs_alternatives);
+                // Add to start symbol candidates.
+                lhs_nonterminals.insert(lhs.to_string());
                 let non_terminal = self.symbol_table.insert_non_terminal(lhs.clone());
                 if regex_patterns.contains_key(lhs) {
                     panic!("Regex patterns are not allowed for nonterminals");
@@ -249,6 +254,21 @@ impl GeneratorAction {
                     rhs: lalr_symbols,
                 });
             }
+        }
+        let start_symbol: HashSet<String> = lhs_nonterminals
+            .difference(&rhs_nonterminals)
+            .cloned()
+            .collect();
+        if start_symbol.is_empty() {
+            panic!("No start symbol found");
+        } else if start_symbol.len() > 1 {
+            panic!("Multiple start symbols found");
+        } else {
+            let start_symbol = self
+                .symbol_table
+                .get_non_terminal_id(start_symbol.iter().next().unwrap())
+                .unwrap();
+            self.grammar_rules.start_symbol = start_symbol;
         }
     }
 }
