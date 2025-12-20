@@ -29,10 +29,12 @@ where
     {
         let parse_table = &self.parse_table;
         let mut state_stack = vec![0];
-        let mut token = iterator.next().unwrap();
+        let mut token = iterator.next().expect("Input token stream is empty");
 
         loop {
-            let state = *state_stack.last().unwrap();
+            let state = *state_stack
+                .last()
+                .expect("State stack is empty during parsing");
             let action = if token.kind.is_eof() {
                 parse_table.states[state].eof.as_ref()
             } else {
@@ -44,15 +46,22 @@ where
                     for _ in 0..rhs.syms.len() {
                         state_stack.pop();
                     }
-                    let state = *state_stack.last().unwrap();
-                    let next_state = parse_table.states[state].goto.get(non_terminal).unwrap();
+                    let state = *state_stack
+                        .last()
+                        .expect("State stack is empty after reduction");
+                    let next_state = parse_table.states[state]
+                        .goto
+                        .get(non_terminal)
+                        .expect("Failed to get next state from parse table");
                     state_stack.push(*next_state);
                     self.semantic_action.on_reduce(non_terminal, rhs);
                 }
                 Some(LRAction::Shift(next_state)) => {
                     state_stack.push(*next_state);
                     self.semantic_action.on_shift(token);
-                    token = iterator.next().unwrap();
+                    token = iterator
+                        .next()
+                        .expect("Unexpected end of input token stream");
                 }
                 Some(LRAction::Accept) => {
                     return Ok(self.semantic_action.on_accept());

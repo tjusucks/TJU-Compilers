@@ -16,7 +16,7 @@ impl Lexer {
         for rule in token_rules {
             builder = builder.token(
                 Rule::new(rule.kind.clone(), &rule.regex)
-                    .unwrap()
+                    .expect("Failed to compile regex for lexer rule")
                     .skip(rule.skip),
             );
         }

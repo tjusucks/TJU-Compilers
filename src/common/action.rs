@@ -19,7 +19,8 @@ pub struct DefaultAction {
 }
 
 impl DefaultAction {
-    pub fn new(start_symbol: NonTerminal) -> Self {
+    #[must_use] 
+    pub const fn new(start_symbol: NonTerminal) -> Self {
         Self {
             node_stack: Vec::new(),
             start_symbol,

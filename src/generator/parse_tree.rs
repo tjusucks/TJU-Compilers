@@ -4,6 +4,10 @@ use crate::common::parse_tree::{ParseTreeNode, Symbol};
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
 impl ParseTreeNode {
+    /// Converts a terminal parse tree node to a Symbol.
+    ///
+    /// # Errors
+    /// Returns an error message if the terminal token is not recognized.
     pub fn to_symbol(&self) -> Result<Symbol, String> {
         match self {
             Self::Terminal { token, lexeme, .. } => {
@@ -29,6 +33,14 @@ impl ParseTreeNode {
         }
     }
 
+    /// Gets terms from an expression node in the parse tree.
+    ///
+    /// # Errors
+    /// Returns an error if the node is not an expression, has no children,
+    /// or has unexpected child types.
+    ///
+    /// # Panics
+    /// Panics if there's an error retrieving factors from child nodes.
     pub fn get_terms(&self) -> Result<Vec<Vec<Symbol>>, String> {
         // expression  = term { "|" term }
         let expression = NonTerminal(Arc::from("Expression"));
@@ -48,7 +60,11 @@ impl ParseTreeNode {
         let mut terminals = Vec::new();
         for child in children {
             if child.is_non_terminal(&term) {
-                terminals.push(child.get_factors().unwrap());
+                terminals.push(
+                    child
+                        .get_factors()
+                        .expect("Failed to get factors from term"),
+                );
             } else if !child.is_terminal(&pipe) {
                 return Err(format!("Unexpected child in expression: {child}"));
             }
@@ -56,6 +72,13 @@ impl ParseTreeNode {
         Ok(terminals)
     }
 
+    /// Gets factors from a term node in the parse tree.
+    ///
+    /// # Errors
+    /// Returns an error if the node is not a term or has unexpected children.
+    ///
+    /// # Panics
+    /// Panics if there's an error retrieving atoms from child nodes.
     pub fn get_factors(&self) -> Result<Vec<Symbol>, String> {
         // term  = factor { factor } | EMPTY
         let term = NonTerminal(Arc::from("Term"));
@@ -75,7 +98,7 @@ impl ParseTreeNode {
             // Children are factors.
             let mut terminals = Vec::new();
             for child in children {
-                terminals.push(child.get_atom().unwrap());
+                terminals.push(child.get_atom().expect("Failed to get atom from factor"));
             }
             Ok(terminals)
         } else {
@@ -83,6 +106,10 @@ impl ParseTreeNode {
         }
     }
 
+    /// Gets atom from a factor node in the parse tree.
+    ///
+    /// # Errors
+    /// Returns an error if the node is not a factor or has no children.
     pub fn get_atom(&self) -> Result<Symbol, String> {
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
         let factor = NonTerminal(Arc::from("Factor"));

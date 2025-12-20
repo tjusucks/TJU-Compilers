@@ -5,6 +5,7 @@ use crate::common::token_rules::{Rule, TokenRules};
 
 static TOKEN_RULES: OnceLock<TokenRules> = OnceLock::new();
 
+#[allow(clippy::too_many_lines)]
 pub fn token_rules() -> &'static TokenRules {
     TOKEN_RULES.get_or_init(|| {
         let at = Terminal(Arc::from("At"));

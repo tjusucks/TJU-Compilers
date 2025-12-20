@@ -6,6 +6,7 @@ use crate::common::grammar_rules::{GrammarRules, Rule};
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
 #[allow(clippy::vec_init_then_push)]
+#[allow(clippy::too_many_lines)]
 pub fn grammar_rules() -> &'static GrammarRules {
     static GRAMMAR_RULES: OnceLock<GrammarRules> = OnceLock::new();
     GRAMMAR_RULES.get_or_init(|| {
@@ -73,9 +74,9 @@ pub fn grammar_rules() -> &'static GrammarRules {
 
         // directive = "@" IDENTIFIER "=" value
         rules.push(Rule {
-            non_terminal: directive.clone(),
+            non_terminal: directive,
             rhs: vec![
-                Symbol::Terminal(at.clone()),
+                Symbol::Terminal(at),
                 Symbol::Terminal(left_identifier.clone()),
                 Symbol::Terminal(equal.clone()),
                 Symbol::Nonterminal(value.clone()),
@@ -92,7 +93,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             rhs: vec![Symbol::Terminal(regex.clone())],
         });
         rules.push(Rule {
-            non_terminal: value.clone(),
+            non_terminal: value,
             rhs: vec![Symbol::Nonterminal(list.clone())],
         });
 
@@ -101,21 +102,21 @@ pub fn grammar_rules() -> &'static GrammarRules {
             non_terminal: list.clone(),
             rhs: vec![
                 Symbol::Nonterminal(list.clone()),
-                Symbol::Terminal(comma.clone()),
+                Symbol::Terminal(comma),
                 Symbol::Terminal(identifier.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: list.clone(),
+            non_terminal: list,
             rhs: vec![Symbol::Terminal(identifier.clone())],
         });
 
         // rule = IDENTIFIER "=" expression
         rules.push(Rule {
-            non_terminal: rule.clone(),
+            non_terminal: rule,
             rhs: vec![
-                Symbol::Terminal(left_identifier.clone()),
-                Symbol::Terminal(equal.clone()),
+                Symbol::Terminal(left_identifier),
+                Symbol::Terminal(equal),
                 Symbol::Nonterminal(expression.clone()),
             ],
         });
@@ -125,7 +126,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             non_terminal: expression.clone(),
             rhs: vec![
                 Symbol::Nonterminal(expression.clone()),
-                Symbol::Terminal(pipe.clone()),
+                Symbol::Terminal(pipe),
                 Symbol::Nonterminal(term.clone()),
             ],
         });
@@ -147,8 +148,8 @@ pub fn grammar_rules() -> &'static GrammarRules {
             rhs: vec![Symbol::Nonterminal(factor.clone())],
         });
         rules.push(Rule {
-            non_terminal: term.clone(),
-            rhs: vec![Symbol::Terminal(empty.clone())],
+            non_terminal: term,
+            rhs: vec![Symbol::Terminal(empty)],
         });
 
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
@@ -173,26 +174,26 @@ pub fn grammar_rules() -> &'static GrammarRules {
             non_terminal: factor_repetition.clone(),
             rhs: vec![
                 Symbol::Nonterminal(factor_repetition.clone()),
-                Symbol::Terminal(tilde.clone()),
+                Symbol::Terminal(tilde),
             ],
         });
         rules.push(Rule {
-            non_terminal: factor_repetition.clone(),
+            non_terminal: factor_repetition,
             rhs: vec![],
         });
 
         // atom = LITERAL | IDENTIFIER ! "=" | REGEX | group | optional | repetition
         rules.push(Rule {
             non_terminal: atom.clone(),
-            rhs: vec![Symbol::Terminal(literal.clone())],
+            rhs: vec![Symbol::Terminal(literal)],
         });
         rules.push(Rule {
             non_terminal: atom.clone(),
-            rhs: vec![Symbol::Terminal(identifier.clone())],
+            rhs: vec![Symbol::Terminal(identifier)],
         });
         rules.push(Rule {
             non_terminal: atom.clone(),
-            rhs: vec![Symbol::Terminal(regex.clone())],
+            rhs: vec![Symbol::Terminal(regex)],
         });
         rules.push(Rule {
             non_terminal: atom.clone(),
@@ -203,67 +204,67 @@ pub fn grammar_rules() -> &'static GrammarRules {
             rhs: vec![Symbol::Nonterminal(optional.clone())],
         });
         rules.push(Rule {
-            non_terminal: atom.clone(),
+            non_terminal: atom,
             rhs: vec![Symbol::Nonterminal(repetition.clone())],
         });
 
         // group = "(" expression ")"
         rules.push(Rule {
-            non_terminal: group.clone(),
+            non_terminal: group,
             rhs: vec![
-                Symbol::Terminal(left_parentheses.clone()),
+                Symbol::Terminal(left_parentheses),
                 Symbol::Nonterminal(expression.clone()),
-                Symbol::Terminal(right_parentheses.clone()),
+                Symbol::Terminal(right_parentheses),
             ],
         });
 
         // optional = "[" expression "]"
         rules.push(Rule {
-            non_terminal: optional.clone(),
+            non_terminal: optional,
             rhs: vec![
-                Symbol::Terminal(left_bracket.clone()),
+                Symbol::Terminal(left_bracket),
                 Symbol::Nonterminal(expression.clone()),
-                Symbol::Terminal(right_bracket.clone()),
+                Symbol::Terminal(right_bracket),
             ],
         });
 
         // repetition = "{" expression "}"
         rules.push(Rule {
-            non_terminal: repetition.clone(),
+            non_terminal: repetition,
             rhs: vec![
-                Symbol::Terminal(left_brace.clone()),
-                Symbol::Nonterminal(expression.clone()),
-                Symbol::Terminal(right_brace.clone()),
+                Symbol::Terminal(left_brace),
+                Symbol::Nonterminal(expression),
+                Symbol::Terminal(right_brace),
             ],
         });
 
         // lookahead = (POSITIVE_LOOKAHEAD | NEGATIVE_LOOKAHEAD | POSITIVE_LOOKBEHIND | NEGATIVE_LOOKBEHIND) factor
         rules.push(Rule {
-            non_terminal: lookahead.clone(),
+            non_terminal: lookahead,
             rhs: vec![
                 Symbol::Nonterminal(lookahead_group.clone()),
-                Symbol::Nonterminal(factor.clone()),
+                Symbol::Nonterminal(factor),
             ],
         });
         rules.push(Rule {
             non_terminal: lookahead_group.clone(),
-            rhs: vec![Symbol::Terminal(positive_look_ahead.clone())],
+            rhs: vec![Symbol::Terminal(positive_look_ahead)],
         });
         rules.push(Rule {
             non_terminal: lookahead_group.clone(),
-            rhs: vec![Symbol::Terminal(negative_look_ahead.clone())],
+            rhs: vec![Symbol::Terminal(negative_look_ahead)],
         });
         rules.push(Rule {
             non_terminal: lookahead_group.clone(),
-            rhs: vec![Symbol::Terminal(positive_look_behind.clone())],
+            rhs: vec![Symbol::Terminal(positive_look_behind)],
         });
         rules.push(Rule {
-            non_terminal: lookahead_group.clone(),
-            rhs: vec![Symbol::Terminal(negative_look_behind.clone())],
+            non_terminal: lookahead_group,
+            rhs: vec![Symbol::Terminal(negative_look_behind)],
         });
 
         GrammarRules {
-            start_symbol: grammar.clone(),
+            start_symbol: grammar,
             rules,
         }
     })

@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+
 use std::sync::Arc;
 
 use lalr::Symbol;
@@ -105,7 +107,9 @@ fn main() {
     // Tokenize and parse the input.
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
-    let mut result = parser.parse(processed).unwrap();
+    let mut result = parser
+        .parse(processed)
+        .expect("Failed to parse EBNF grammar");
     println!("{}", result.parse_tree);
 
     // Build the lexer and parser based on the result.
@@ -121,7 +125,9 @@ fn main() {
     // Test the generated lexer and parser.
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
-    let _ = parser.parse(processed).unwrap();
+    let _ = parser
+        .parse(processed)
+        .expect("Failed to parse input with generated parser");
 }
 
 fn process_rules(grammar_rules: &mut GrammarRules) {

@@ -200,10 +200,10 @@ impl GeneratorAction {
                 // Add token rule for the terminal.
                 if regex_pattern.is_some() && literal_pattern.is_some() {
                     panic!("Regex patterns and literal patterns cannot be used together");
-                } else if regex_pattern.is_some() {
+                } else if let Some(regex) = regex_pattern {
                     self.token_rules.push(TokenRule {
                         kind: terminal,
-                        regex: strip(regex_pattern.unwrap()).to_string(),
+                        regex: strip(regex).to_string(),
                         skip: false,
                     });
                 } else if let Some(literals) = literal_pattern {
@@ -270,14 +270,11 @@ impl GeneratorAction {
         // Sort so that named tokens (all uppercase or with underscores) come first.
         self.token_rules.sort_by_key(|rule| {
             let name = rule.kind.0.as_ref();
-            if name
-                .chars()
-                .all(|char| char.is_ascii_uppercase() || char == '_')
-            {
-                0
-            } else {
-                1
-            }
+            i32::from(
+                !name
+                    .chars()
+                    .all(|char| char.is_ascii_uppercase() || char == '_'),
+            )
         });
 
         // Deduplicate by (regex, skip), keeping the first occurrence.
@@ -330,8 +327,14 @@ impl GeneratorAction {
         match start_symbols.len() {
             0 => panic!("No start symbol found"),
             1 => {
-                let start_name = start_symbols.iter().next().unwrap();
-                let start_symbol = self.symbol_table.get_non_terminal_id(start_name).unwrap();
+                let start_name = start_symbols
+                    .iter()
+                    .next()
+                    .expect("Start symbol candidate should have exactly one element");
+                let start_symbol = self
+                    .symbol_table
+                    .get_non_terminal_id(start_name)
+                    .expect("Start symbol should exist in the symbol table as a non terminal");
                 self.grammar_rules.start_symbol = start_symbol;
             }
             _ => panic!("Multiple start symbols found: {start_symbols:?}"),
@@ -399,12 +402,20 @@ impl Action for GeneratorAction {
         // Collect productions from the parse tree.
         let rule = NonTerminal(Arc::from("Rule"));
         if non_terminal == rule {
-            let node = self.node_stack.last().unwrap();
+            let node = self
+                .node_stack
+                .last()
+                .expect("Node stack should not be empty");
             let children = node.get_children();
 
             // rule = IDENTIFIER "=" expression
             assert!(children.len() == 3);
-            self.add_production(children[0].get_lexeme(), children[2].get_terms().unwrap());
+            self.add_production(
+                children[0].get_lexeme(),
+                children[2]
+                    .get_terms()
+                    .expect("Failed to get terms from expression"),
+            );
         }
     }
 
