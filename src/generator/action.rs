@@ -256,6 +256,12 @@ impl GeneratorAction {
             skip: true,
         });
 
+        // Remove EPSILON from token rules if it exists.
+        let epsilon_terminal = self.symbol_table.get_terminal_id("EPSILON");
+        if let Some(epsilon) = epsilon_terminal {
+            self.token_rules.retain(|rule| rule.kind != epsilon);
+        }
+
         // Remove duplicate token rules, prioritizing named tokens.
         self.token_rules.sort_by_key(|rule| {
             let name = rule.kind.0.as_ref();
@@ -266,6 +272,7 @@ impl GeneratorAction {
                 1
             }
         });
+
         let mut seen: HashMap<(String, bool), usize> = HashMap::new();
         self.token_rules.retain(|rule| {
             let key = (rule.regex.clone(), rule.skip);
@@ -333,7 +340,6 @@ impl Action for GeneratorAction {
         let table = symbol_table();
 
         let grammar = table.get_non_terminal_id("Grammar").unwrap();
-        let grammar_repetition = table.get_non_terminal_id("GrammarRepetition").unwrap();
         let atom = table.get_non_terminal_id("Atom").unwrap();
         let list = table.get_non_terminal_id("List").unwrap();
         let expression = table.get_non_terminal_id("Expression").unwrap();
@@ -341,7 +347,7 @@ impl Action for GeneratorAction {
         let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
         let length = rhs.syms.len();
 
-        if non_terminal == grammar || non_terminal == grammar_repetition || non_terminal == atom {
+        if non_terminal == grammar || non_terminal == atom {
             // Remove these non_terminals from the parse tree.
         } else if non_terminal == list
             || non_terminal == expression

@@ -11,18 +11,6 @@ pub struct Span {
     pub column: usize,
 }
 
-impl Span {
-    #[must_use]
-    pub const fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
-        Self {
-            start,
-            end,
-            line,
-            column,
-        }
-    }
-}
-
 /// Parse error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
@@ -51,6 +39,18 @@ pub enum Symbol {
     Regex(String),      // Regexes like /[a-z]+/
     Identifier(String), // Identifiers like "expression"
     Epsilon,            // Empty production
+}
+
+impl Span {
+    #[must_use]
+    pub const fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
+        Self {
+            start,
+            end,
+            line,
+            column,
+        }
+    }
 }
 
 impl ParseTreeNode {

@@ -4,7 +4,6 @@ use crate::common::grammar_rules::GrammarRules;
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
 pub struct ParseTable {
-    pub grammar: &'static Grammar<Terminal, NonTerminal, ()>,
     pub parse_table: LR1ParseTable<'static, Terminal, NonTerminal, ()>,
 }
 
@@ -43,9 +42,6 @@ impl ParseTable {
             }
         };
 
-        Self {
-            grammar: grammar_ref,
-            parse_table,
-        }
+        Self { parse_table }
     }
 }

@@ -75,18 +75,6 @@ impl SymbolTable {
     pub fn get_terminal_id(&self, terminal: &str) -> Option<Terminal> {
         self.terminals.get(terminal).cloned()
     }
-
-    pub fn get_non_terminal_name(&self, non_terminal: &NonTerminal) -> Option<&str> {
-        self.non_terminal_names
-            .get(non_terminal)
-            .map(std::string::String::as_str)
-    }
-
-    pub fn get_terminal_name(&self, terminal: &Terminal) -> Option<&str> {
-        self.terminal_names
-            .get(terminal)
-            .map(std::string::String::as_str)
-    }
 }
 
 impl TokenKind for Terminal {

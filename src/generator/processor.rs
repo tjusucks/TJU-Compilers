@@ -1,7 +1,6 @@
 use relex::Token;
 
 use crate::common::symbol_table::Terminal;
-use crate::generator::symbol_table::symbol_table;
 
 pub struct Processor<I: Iterator<Item = Token<'static, Terminal>>> {
     iterator: I,

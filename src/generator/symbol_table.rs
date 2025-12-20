@@ -41,18 +41,14 @@ pub fn symbol_table() -> &'static SymbolTable {
         let non_terminal_names = [
             // Grammar.
             "Grammar",
-            "GrammarRepetition",
             // Directive.
             "Directive",
             "Value",
             "List",
-            "ListRepetition",
             // EBNF constructs.
             "Rule",
             "Expression",
-            "ExpressionRepetition",
             "Term",
-            "TermRepetition",
             "Factor",
             "FactorRepetition",
             "Atom",
