@@ -256,6 +256,27 @@ impl GeneratorAction {
             skip: true,
         });
 
+        // Remove duplicate token rules, prioritizing named tokens.
+        self.token_rules.sort_by_key(|rule| {
+            let name = rule.kind.0.as_ref();
+            // Named tokens (all uppercase or with underscores) come first
+            if name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
+                0
+            } else {
+                1
+            }
+        });
+        let mut seen: HashMap<(String, bool), usize> = HashMap::new();
+        self.token_rules.retain(|rule| {
+            let key = (rule.regex.clone(), rule.skip);
+            if let Entry::Vacant(e) = seen.entry(key) {
+                e.insert(1);
+                true
+            } else {
+                false
+            }
+        });
+
         // Build grammar rules.
         for (lhs, rhs_alternatives) in &self.rules {
             for rhs in rhs_alternatives {

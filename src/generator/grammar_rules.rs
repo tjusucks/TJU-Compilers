@@ -273,29 +273,27 @@ pub fn grammar_rules() -> &'static GrammarRules {
 
 #[must_use]
 pub fn reduce_on(rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Terminal>) -> bool {
-    let table = symbol_table();
-    let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
-    let atom = table.get_non_terminal_id("Atom").unwrap();
-    let tilde = table.get_terminal_id("Tilde").unwrap();
-
-    match (&rhs.syms[..], lookahead) {
-        // Greedy whitespace consumption.
-        (
-            [
-                Symbol::Nonterminal(nt1),
-                Symbol::Nonterminal(nt2),
-                Symbol::Nonterminal(nt3),
-            ],
-            Some(term),
-        ) if *nt1 == factor_repetition
-            && *nt2 == atom
-            && *nt3 == factor_repetition
-            && *term == tilde =>
-        {
-            false
-        }
-        _ => true,
-    }
+    // Greedy whitespace consumption.
+    !matches!((&rhs.syms[..], lookahead), (
+    [
+        Symbol::Nonterminal(nt1),
+        Symbol::Nonterminal(nt2),
+        Symbol::Nonterminal(nt3),
+    ],
+    Some(terminal),
+    ) if (
+            // snake_case, generated rules.
+            (nt1.0.as_ref() == "factor_repetition"
+                && nt2.0.as_ref() == "atom"
+                && nt3.0.as_ref() == "factor_repetition"
+                && terminal.0.as_ref() == "WHITESPACE")
+            ||
+            // CamelCase, hard coded rules.
+            (nt1.0.as_ref() == "FactorRepetition"
+                && nt2.0.as_ref() == "Atom"
+                && nt3.0.as_ref() == "FactorRepetition"
+                && terminal.0.as_ref() == "Tilde")
+        ))
 }
 
 #[must_use]

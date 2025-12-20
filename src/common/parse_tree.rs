@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
+use crate::common::symbol_table::{NonTerminal, Terminal};
 
 /// Source location information.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -78,34 +78,6 @@ impl ParseTreeNode {
             Self::Terminal { .. } => true,
             Self::NonTerminal { children, .. } => children.is_empty(),
         }
-    }
-
-    pub fn to_string(&self, symbol_table: &SymbolTable) -> String {
-        fn fmt_sexpr(node: &ParseTreeNode, buf: &mut String, indent: usize, table: &SymbolTable) {
-            let pad = "  ".repeat(indent);
-            match node {
-                ParseTreeNode::Terminal { token, lexeme, .. } => {
-                    let terminal_name =
-                        table.get_terminal_name(token).unwrap_or("UNKNOWN_TERMINAL");
-                    buf.push_str(&format!("{pad}({terminal_name} \"{lexeme}\")\n"));
-                }
-                ParseTreeNode::NonTerminal {
-                    symbol, children, ..
-                } => {
-                    let nonterminal_name = table
-                        .get_non_terminal_name(symbol)
-                        .unwrap_or("UNKNOWN_NONTERMINAL");
-                    buf.push_str(&format!("{pad}({nonterminal_name}\n"));
-                    for child in children {
-                        fmt_sexpr(child, buf, indent + 1, table);
-                    }
-                    buf.push_str(&format!("{pad})\n"));
-                }
-            }
-        }
-        let mut buf = String::new();
-        fmt_sexpr(self, &mut buf, 0, symbol_table);
-        buf
     }
 
     #[must_use]

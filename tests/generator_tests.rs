@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use lalr::{Rhs, Symbol};
 use rustcc::common::action::DefaultAction;
+use rustcc::common::grammar_rules::GrammarRules;
 use rustcc::common::parse_table::ParseTable;
-use rustcc::common::symbol_table::{NonTerminal, Terminal};
+use rustcc::common::symbol_table::Terminal;
 use rustcc::compiler::lexer::Lexer;
 use rustcc::compiler::parser::Parser;
 use rustcc::generator::action::GeneratorAction;
 use rustcc::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use rustcc::generator::processor::Processor;
-use rustcc::generator::symbol_table::symbol_table;
 use rustcc::generator::token_rules::token_rules;
 
 #[test]
@@ -96,99 +98,38 @@ fn test_generated_lexer_tokenization() {
     let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
     let mut parser = Parser::new(parse_table.parse_table, GeneratorAction::default());
 
-    println!(
-        "Start symbol: {}",
-        grammar_rules
-            .start_symbol
-            .to_string(symbol_table())
-            .unwrap()
-    );
-    for rule in &grammar_rules.rules {
-        let lhs = rule.non_terminal.to_string(symbol_table()).unwrap();
-        let rhs = rule
-            .rhs
-            .iter()
-            .map(|sym| match sym {
-                Symbol::Terminal(t) => t.to_string(symbol_table()).unwrap(),
-                Symbol::Nonterminal(nt) => nt.to_string(symbol_table()).unwrap(),
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        println!("{} -> {}", lhs, rhs);
-    }
-
     // Tokenize and parse the input.
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
-    let result = parser.parse(processed).unwrap();
-    // println!("{}", result.parse_tree.to_string(symbol_table()));
-    //
-    println!("{:?}", result.symbol_table);
+    let mut result = parser.parse(processed).unwrap();
 
     // Build the lexer and parser based on the result.
     let lexer = Lexer::new(&result.token_rules);
+    process_rules(&mut result.grammar_rules);
 
-    println!(
-        "Start symbol: {}",
-        result
-            .grammar_rules
-            .start_symbol
-            .to_string(&result.symbol_table)
-            .unwrap()
-    );
-    for rule in &result.grammar_rules.rules {
-        let lhs = rule.non_terminal.to_string(&result.symbol_table).unwrap();
-        let rhs = rule
-            .rhs
-            .iter()
-            .map(|sym| match sym {
-                Symbol::Terminal(t) => t.to_string(&result.symbol_table).unwrap(),
-                Symbol::Nonterminal(nt) => nt.to_string(&result.symbol_table).unwrap(),
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        println!("{} -> {}", lhs, rhs);
-    }
-
-    let reduce_on_test = |rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Terminal>| {
-        // let table = &result.symbol_table;
-        // let factor_repetition = table.get_non_terminal_id("factor_repetition").unwrap();
-        // let atom = table.get_non_terminal_id("atom").unwrap();
-        // let tilde = table.get_terminal_id("~").unwrap();
-        // let whitespace = table.get_terminal_id("WHITESPACE").unwrap();
-
-        // match (&rhs.syms[..], lookahead) {
-        //     // Greedy whitespace consumption.
-        //     (
-        //         [
-        //             Symbol::Nonterminal(nt1),
-        //             Symbol::Nonterminal(nt2),
-        //             Symbol::Nonterminal(nt3),
-        //         ],
-        //         Some(terminal),
-        //     ) if *nt1 == factor_repetition
-        //         && *nt2 == atom
-        //         && *nt3 == factor_repetition
-        //         && (*terminal == tilde || *terminal == whitespace) =>
-        //     {
-        //         false
-        //     }
-        //     _ => true,
-        // }
-        true
-    };
-
-    let parse_table = ParseTable::new(&result.grammar_rules, reduce_on_test, priority_of);
-    for state in &parse_table.parse_table.states {
-        println!("{:?}", state);
-    }
+    let parse_table = ParseTable::new(&result.grammar_rules, reduce_on, priority_of);
     let mut parser = Parser::new(
         parse_table.parse_table,
         DefaultAction::new(result.grammar_rules.start_symbol),
     );
+
     // Test the generated lexer and parser.
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
     let tree = parser.parse(processed).unwrap();
-    println!("{}", tree.to_string(&result.symbol_table));
+    println!("{}", tree);
+}
+
+fn process_rules(grammar_rules: &mut GrammarRules) {
+    // Handle negative lookahead for identifier.
+    let left_identifier = Terminal(Arc::from("LEFT_IDENTIFIER"));
+    for rule in &mut grammar_rules.rules {
+        if rule.non_terminal.0.as_ref() == "directive" {
+            // directive = "@" IDENTIFIER "=" value
+            rule.rhs[1] = Symbol::Terminal(left_identifier.clone());
+        } else if rule.non_terminal.0.as_ref() == "rule" {
+            // rule = IDENTIFIER "=" expression
+            rule.rhs[0] = Symbol::Terminal(left_identifier.clone());
+        }
+    }
 }

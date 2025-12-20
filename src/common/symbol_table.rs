@@ -17,18 +17,6 @@ pub struct SymbolTable {
     terminal_names: HashMap<Terminal, String>,
 }
 
-impl Terminal {
-    pub fn to_string(self, symbol_table: &SymbolTable) -> Option<&str> {
-        symbol_table.get_terminal_name(&self)
-    }
-}
-
-impl NonTerminal {
-    pub fn to_string(self, symbol_table: &SymbolTable) -> Option<&str> {
-        symbol_table.get_non_terminal_name(&self)
-    }
-}
-
 impl SymbolTable {
     #[must_use]
     pub fn from_maps(

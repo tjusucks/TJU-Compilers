@@ -21,16 +21,20 @@ impl<I: Iterator<Item = Token<'static, Terminal>>> Processor<I> {
 impl<I: Iterator<Item = Token<'static, Terminal>>> Iterator for Processor<I> {
     type Item = Token<'static, Terminal>;
     fn next(&mut self) -> Option<Self::Item> {
-        let table = symbol_table();
-        let curr = self.iterator.next();
+        let token = self.iterator.next();
         if let Some(mut previous_token) = self.previous_token.take() {
-            if let Some(ref current_token) = curr
-                && current_token.kind == table.get_terminal_id("Equal").unwrap()
-                && previous_token.kind == table.get_terminal_id("Identifier").unwrap()
-            {
-                previous_token.kind = table.get_terminal_id("LeftIdentifier").unwrap();
+            if let Some(ref current_token) = token {
+                if current_token.kind.0.as_ref() == "Equal"
+                    && previous_token.kind.0.as_ref() == "Identifier"
+                {
+                    previous_token.kind = Terminal("LeftIdentifier".into());
+                } else if current_token.kind.0.as_ref() == "="
+                    && previous_token.kind.0.as_ref() == "IDENTIFIER"
+                {
+                    previous_token.kind = Terminal("LEFT_IDENTIFIER".into());
+                }
             }
-            self.previous_token = curr;
+            self.previous_token = token;
             Some(previous_token)
         } else {
             None
