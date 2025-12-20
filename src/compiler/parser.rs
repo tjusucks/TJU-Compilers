@@ -23,6 +23,20 @@ where
         }
     }
 
+    /// Parses the input token stream using the LALR(1) parser.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if:
+    /// - The input token stream is empty
+    /// - The state stack becomes empty during parsing
+    /// - Next state cannot be found from the parse table
+    /// - Unexpected end of input token stream occurs during parsing
+    /// - Failed to get action for a particular state and token combination
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the parsing process encounters an unrecoverable parsing error.
     pub fn parse<I>(&mut self, mut iterator: I) -> Result<A::ParseResult, A::ParseError>
     where
         I: Iterator<Item = Token<'a, Terminal>>,

@@ -8,6 +8,11 @@ pub struct ParseTable {
 }
 
 impl ParseTable {
+    /// Creates a new `ParseTable` from grammar rules.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the grammar is not LALR(1) and a conflict is detected.
     pub fn new<ReduceFn, PriorityFn>(
         grammar_rules: &GrammarRules,
         reduce_on: ReduceFn,

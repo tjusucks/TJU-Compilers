@@ -10,6 +10,11 @@ pub struct Lexer {
 }
 
 impl Lexer {
+    /// Creates a new Lexer from token rules.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any of the regex patterns in the token rules fail to compile.
     #[must_use]
     pub fn new(token_rules: &TokenRules) -> Self {
         let mut builder = RecognizerBuilder::new();
