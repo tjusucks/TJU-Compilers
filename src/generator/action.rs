@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use regex::escape;
 use relex::Token;
@@ -9,13 +10,9 @@ use crate::common::grammar_rules::{GrammarRules, Rule as GrammarRule};
 use crate::common::parse_tree::{ParseError, ParseTreeNode, Span, Symbol};
 use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
 use crate::common::token_rules::{Rule as TokenRule, TokenRules};
-use crate::generator::symbol_table::symbol_table;
 
 #[derive(Debug)]
 pub struct GeneratorResult {
-    /// Symbol table containing all terminals and non terminals.
-    pub symbol_table: SymbolTable,
-
     /// Grammar rules containing productions for non terminals.
     pub grammar_rules: GrammarRules,
 
@@ -116,13 +113,11 @@ fn symbols_to_strings(symbols: &[Vec<Symbol>]) -> Vec<Vec<String>> {
 impl GeneratorResult {
     #[must_use]
     pub const fn new(
-        symbol_table: SymbolTable,
         grammar_rules: GrammarRules,
         token_rules: TokenRules,
         parse_tree: ParseTreeNode,
     ) -> Self {
         Self {
-            symbol_table,
             grammar_rules,
             token_rules,
             parse_tree,
@@ -242,6 +237,17 @@ impl GeneratorAction {
             }
         }
 
+        // Postprocess token rules: remove EPSILON, deduplicate, and prefer named tokens.
+        self.process_token_rules();
+
+        // Build grammar rules.
+        self.build_grammar_rules();
+
+        // Determine the start symbol.
+        self.determine_start_symbol();
+    }
+
+    fn process_token_rules(&mut self) {
         // Add token rules for whitespace and comments.
         let comment = insert_unique(&mut self.symbol_table, "Comment");
         let whitespace = insert_unique(&mut self.symbol_table, "Whitespace");
@@ -257,34 +263,38 @@ impl GeneratorAction {
         });
 
         // Remove EPSILON from token rules if it exists.
-        let epsilon_terminal = self.symbol_table.get_terminal_id("EPSILON");
-        if let Some(epsilon) = epsilon_terminal {
+        if let Some(epsilon) = self.symbol_table.get_terminal_id("EPSILON") {
             self.token_rules.retain(|rule| rule.kind != epsilon);
         }
 
-        // Remove duplicate token rules, prioritizing named tokens.
+        // Sort so that named tokens (all uppercase or with underscores) come first.
         self.token_rules.sort_by_key(|rule| {
             let name = rule.kind.0.as_ref();
-            // Named tokens (all uppercase or with underscores) come first
-            if name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
+            if name
+                .chars()
+                .all(|char| char.is_ascii_uppercase() || char == '_')
+            {
                 0
             } else {
                 1
             }
         });
 
+        // Deduplicate by (regex, skip), keeping the first occurrence.
         let mut seen: HashMap<(String, bool), usize> = HashMap::new();
         self.token_rules.retain(|rule| {
             let key = (rule.regex.clone(), rule.skip);
-            if let Entry::Vacant(e) = seen.entry(key) {
-                e.insert(1);
+            if let Entry::Vacant(entry) = seen.entry(key) {
+                entry.insert(1);
                 true
             } else {
                 false
             }
         });
+    }
 
-        // Build grammar rules.
+    /// Build the lalr grammar rules from the intermediate `self.rules` mapping.
+    fn build_grammar_rules(&mut self) {
         for (lhs, rhs_alternatives) in &self.rules {
             for rhs in rhs_alternatives {
                 let mut lalr_symbols: Vec<lalr::Symbol<Terminal, NonTerminal>> = Vec::new();
@@ -306,15 +316,17 @@ impl GeneratorAction {
                 });
             }
         }
+    }
 
-        // Determine the start symbol by calculating set difference.
+    /// Determine and set the start symbol for `self.grammar_rules` by taking the set
+    /// difference between LHS non-terminals and RHS non-terminals.
+    fn determine_start_symbol(&mut self) {
         let start_symbols: HashSet<String> = self
             .lhs_non_terminals
             .difference(&self.rhs_non_terminals)
             .cloned()
             .collect();
 
-        // There should be exactly one start symbol.
         match start_symbols.len() {
             0 => panic!("No start symbol found"),
             1 => {
@@ -337,14 +349,12 @@ impl Action for GeneratorAction {
         rhs: &lalr::Rhs<Terminal, NonTerminal, ()>,
     ) {
         let non_terminal = non_terminal.clone();
-        let table = symbol_table();
-
-        let grammar = table.get_non_terminal_id("Grammar").unwrap();
-        let atom = table.get_non_terminal_id("Atom").unwrap();
-        let list = table.get_non_terminal_id("List").unwrap();
-        let expression = table.get_non_terminal_id("Expression").unwrap();
-        let term = table.get_non_terminal_id("Term").unwrap();
-        let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
+        let grammar = NonTerminal(Arc::from("Grammar"));
+        let atom = NonTerminal(Arc::from("Atom"));
+        let list = NonTerminal(Arc::from("List"));
+        let expression = NonTerminal(Arc::from("Expression"));
+        let term = NonTerminal(Arc::from("Term"));
+        let factor_repetition = NonTerminal(Arc::from("FactorRepetition"));
         let length = rhs.syms.len();
 
         if non_terminal == grammar || non_terminal == atom {
@@ -387,7 +397,8 @@ impl Action for GeneratorAction {
         }
 
         // Collect productions from the parse tree.
-        if non_terminal == table.get_non_terminal_id("Rule").unwrap() {
+        let rule = NonTerminal(Arc::from("Rule"));
+        if non_terminal == rule {
             let node = self.node_stack.last().unwrap();
             let children = node.get_children();
 
@@ -405,12 +416,10 @@ impl Action for GeneratorAction {
 
     fn on_accept(&mut self) -> Self::ParseResult {
         self.generate_result();
-        let table = symbol_table();
-        let grammar = table.get_non_terminal_id("Grammar").unwrap();
+        let grammar = NonTerminal(Arc::from("Grammar"));
         let children = std::mem::take(&mut self.node_stack);
         let root_node = ParseTreeNode::non_terminal(grammar, children, Span::new(0, 0, 1, 1));
         GeneratorResult::new(
-            std::mem::take(&mut self.symbol_table),
             std::mem::take(&mut self.grammar_rules),
             std::mem::take(&mut self.token_rules),
             root_node,

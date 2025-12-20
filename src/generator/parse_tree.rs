@@ -1,14 +1,16 @@
+use std::sync::Arc;
+
 use crate::common::parse_tree::{ParseTreeNode, Symbol};
-use crate::generator::symbol_table::symbol_table;
+use crate::common::symbol_table::{NonTerminal, Terminal};
 
 impl ParseTreeNode {
     pub fn to_symbol(&self) -> Result<Symbol, String> {
         match self {
             Self::Terminal { token, lexeme, .. } => {
-                let literal = symbol_table().get_terminal_id("Literal").unwrap();
-                let regex = symbol_table().get_terminal_id("Regex").unwrap();
-                let identifier = symbol_table().get_terminal_id("Identifier").unwrap();
-                let epsilon = symbol_table().get_terminal_id("Empty").unwrap();
+                let literal = Terminal(Arc::from("Literal"));
+                let regex = Terminal(Arc::from("Regex"));
+                let identifier = Terminal(Arc::from("Identifier"));
+                let epsilon = Terminal(Arc::from("Empty"));
                 if *token == literal {
                     Ok(Symbol::Literal(lexeme.clone()))
                 } else if *token == regex {
@@ -29,9 +31,9 @@ impl ParseTreeNode {
 
     pub fn get_terms(&self) -> Result<Vec<Vec<Symbol>>, String> {
         // expression  = term { "|" term }
-        let expression = symbol_table().get_non_terminal_id("Expression").unwrap();
-        let term = symbol_table().get_non_terminal_id("Term").unwrap();
-        let pipe = symbol_table().get_terminal_id("Pipe").unwrap();
+        let expression = NonTerminal(Arc::from("Expression"));
+        let term = NonTerminal(Arc::from("Term"));
+        let pipe = Terminal(Arc::from("Pipe"));
 
         // Only collect terms if the node is an expression.
         if !self.is_non_terminal(&expression) {
@@ -56,9 +58,9 @@ impl ParseTreeNode {
 
     pub fn get_factors(&self) -> Result<Vec<Symbol>, String> {
         // term  = factor { factor } | EMPTY
-        let term = symbol_table().get_non_terminal_id("Term").unwrap();
-        let factor = symbol_table().get_non_terminal_id("Factor").unwrap();
-        let empty = symbol_table().get_terminal_id("Empty").unwrap();
+        let term = NonTerminal(Arc::from("Term"));
+        let factor = NonTerminal(Arc::from("Factor"));
+        let empty = Terminal(Arc::from("Empty"));
 
         // Only collect factors if the node is a term.
         if !self.is_non_terminal(&term) {
@@ -83,10 +85,8 @@ impl ParseTreeNode {
 
     pub fn get_atom(&self) -> Result<Symbol, String> {
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
-        let factor = symbol_table().get_non_terminal_id("Factor").unwrap();
-        let factor_repetition = symbol_table()
-            .get_non_terminal_id("FactorRepetition")
-            .unwrap();
+        let factor = NonTerminal(Arc::from("Factor"));
+        let factor_repetition = NonTerminal(Arc::from("FactorRepetition"));
 
         // Only collect atoms if the node is a factor.
         if !self.is_non_terminal(&factor) {

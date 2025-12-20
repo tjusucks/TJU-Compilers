@@ -1,55 +1,53 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use lalr::{Rhs, Symbol};
 
 use crate::common::grammar_rules::{GrammarRules, Rule};
 use crate::common::symbol_table::{NonTerminal, Terminal};
-use crate::generator::symbol_table::symbol_table;
 
 #[allow(clippy::vec_init_then_push)]
 pub fn grammar_rules() -> &'static GrammarRules {
     static GRAMMAR_RULES: OnceLock<GrammarRules> = OnceLock::new();
     GRAMMAR_RULES.get_or_init(|| {
-        let table = symbol_table();
 
         // Terminal symbols.
-        let at = table.get_terminal_id("At").unwrap();
-        let equal = table.get_terminal_id("Equal").unwrap();
-        let pipe = table.get_terminal_id("Pipe").unwrap();
-        let left_brace = table.get_terminal_id("LeftBrace").unwrap();
-        let right_brace = table.get_terminal_id("RightBrace").unwrap();
-        let left_bracket = table.get_terminal_id("LeftBracket").unwrap();
-        let right_bracket = table.get_terminal_id("RightBracket").unwrap();
-        let left_parentheses = table.get_terminal_id("LeftParentheses").unwrap();
-        let right_parentheses = table.get_terminal_id("RightParentheses").unwrap();
-        let comma = table.get_terminal_id("Comma").unwrap();
-        let tilde = table.get_terminal_id("Tilde").unwrap();
-        let positive_look_ahead = table.get_terminal_id("PositiveLookAhead").unwrap();
-        let negative_look_ahead = table.get_terminal_id("NegativeLookAhead").unwrap();
-        let positive_look_behind = table.get_terminal_id("PositiveLookBehind").unwrap();
-        let negative_look_behind = table.get_terminal_id("NegativeLookBehind").unwrap();
-        let empty = table.get_terminal_id("Empty").unwrap();
-        let literal = table.get_terminal_id("Literal").unwrap();
-        let regex = table.get_terminal_id("Regex").unwrap();
-        let identifier = table.get_terminal_id("Identifier").unwrap();
-        let left_identifier = table.get_terminal_id("LeftIdentifier").unwrap();
+        let at = Terminal(Arc::from("At"));
+        let equal = Terminal(Arc::from("Equal"));
+        let pipe = Terminal(Arc::from("Pipe"));
+        let left_brace = Terminal(Arc::from("LeftBrace"));
+        let right_brace = Terminal(Arc::from("RightBrace"));
+        let left_bracket = Terminal(Arc::from("LeftBracket"));
+        let right_bracket = Terminal(Arc::from("RightBracket"));
+        let left_parentheses = Terminal(Arc::from("LeftParentheses"));
+        let right_parentheses = Terminal(Arc::from("RightParentheses"));
+        let comma = Terminal(Arc::from("Comma"));
+        let tilde = Terminal(Arc::from("Tilde"));
+        let positive_look_ahead = Terminal(Arc::from("PositiveLookAhead"));
+        let negative_look_ahead = Terminal(Arc::from("NegativeLookAhead"));
+        let positive_look_behind = Terminal(Arc::from("PositiveLookBehind"));
+        let negative_look_behind = Terminal(Arc::from("NegativeLookBehind"));
+        let empty = Terminal(Arc::from("Empty"));
+        let literal = Terminal(Arc::from("Literal"));
+        let regex = Terminal(Arc::from("Regex"));
+        let identifier = Terminal(Arc::from("Identifier"));
+        let left_identifier = Terminal(Arc::from("LeftIdentifier"));
 
         // NonTerminal symbols.
-        let grammar = table.get_non_terminal_id("Grammar").unwrap();
-        let directive = table.get_non_terminal_id("Directive").unwrap();
-        let value = table.get_non_terminal_id("Value").unwrap();
-        let list = table.get_non_terminal_id("List").unwrap();
-        let rule = table.get_non_terminal_id("Rule").unwrap();
-        let expression = table.get_non_terminal_id("Expression").unwrap();
-        let term = table.get_non_terminal_id("Term").unwrap();
-        let factor = table.get_non_terminal_id("Factor").unwrap();
-        let factor_repetition = table.get_non_terminal_id("FactorRepetition").unwrap();
-        let atom = table.get_non_terminal_id("Atom").unwrap();
-        let group = table.get_non_terminal_id("Group").unwrap();
-        let optional = table.get_non_terminal_id("Optional").unwrap();
-        let repetition = table.get_non_terminal_id("Repetition").unwrap();
-        let lookahead = table.get_non_terminal_id("Lookahead").unwrap();
-        let lookahead_group = table.get_non_terminal_id("LookaheadGroup").unwrap();
+        let grammar = NonTerminal(Arc::from("Grammar"));
+        let directive = NonTerminal(Arc::from("Directive"));
+        let value = NonTerminal(Arc::from("Value"));
+        let list = NonTerminal(Arc::from("List"));
+        let rule = NonTerminal(Arc::from("Rule"));
+        let expression = NonTerminal(Arc::from("Expression"));
+        let term = NonTerminal(Arc::from("Term"));
+        let factor = NonTerminal(Arc::from("Factor"));
+        let factor_repetition = NonTerminal(Arc::from("FactorRepetition"));
+        let atom = NonTerminal(Arc::from("Atom"));
+        let group = NonTerminal(Arc::from("Group"));
+        let optional = NonTerminal(Arc::from("Optional"));
+        let repetition = NonTerminal(Arc::from("Repetition"));
+        let lookahead = NonTerminal(Arc::from("Lookahead"));
+        let lookahead_group = NonTerminal(Arc::from("LookaheadGroup"));
 
         let mut rules = Vec::new();
 

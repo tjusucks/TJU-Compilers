@@ -1,35 +1,33 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
+use crate::common::symbol_table::Terminal;
 use crate::common::token_rules::{Rule, TokenRules};
-use crate::generator::symbol_table::symbol_table;
 
 static TOKEN_RULES: OnceLock<TokenRules> = OnceLock::new();
 
 pub fn token_rules() -> &'static TokenRules {
     TOKEN_RULES.get_or_init(|| {
-        let table = symbol_table();
-
-        let at = table.get_terminal_id("At").unwrap();
-        let equal = table.get_terminal_id("Equal").unwrap();
-        let pipe = table.get_terminal_id("Pipe").unwrap();
-        let left_brace = table.get_terminal_id("LeftBrace").unwrap();
-        let right_brace = table.get_terminal_id("RightBrace").unwrap();
-        let left_bracket = table.get_terminal_id("LeftBracket").unwrap();
-        let right_bracket = table.get_terminal_id("RightBracket").unwrap();
-        let left_parentheses = table.get_terminal_id("LeftParentheses").unwrap();
-        let right_parentheses = table.get_terminal_id("RightParentheses").unwrap();
-        let comma = table.get_terminal_id("Comma").unwrap();
-        let tilde = table.get_terminal_id("Tilde").unwrap();
-        let positive_look_ahead = table.get_terminal_id("PositiveLookAhead").unwrap();
-        let negative_look_ahead = table.get_terminal_id("NegativeLookAhead").unwrap();
-        let positive_look_behind = table.get_terminal_id("PositiveLookBehind").unwrap();
-        let negative_look_behind = table.get_terminal_id("NegativeLookBehind").unwrap();
-        let empty = table.get_terminal_id("Empty").unwrap();
-        let literal = table.get_terminal_id("Literal").unwrap();
-        let regex = table.get_terminal_id("Regex").unwrap();
-        let identifier = table.get_terminal_id("Identifier").unwrap();
-        let comment = table.get_terminal_id("Comment").unwrap();
-        let whitespace = table.get_terminal_id("Whitespace").unwrap();
+        let at = Terminal(Arc::from("At"));
+        let equal = Terminal(Arc::from("Equal"));
+        let pipe = Terminal(Arc::from("Pipe"));
+        let left_brace = Terminal(Arc::from("LeftBrace"));
+        let right_brace = Terminal(Arc::from("RightBrace"));
+        let left_bracket = Terminal(Arc::from("LeftBracket"));
+        let right_bracket = Terminal(Arc::from("RightBracket"));
+        let left_parentheses = Terminal(Arc::from("LeftParentheses"));
+        let right_parentheses = Terminal(Arc::from("RightParentheses"));
+        let comma = Terminal(Arc::from("Comma"));
+        let tilde = Terminal(Arc::from("Tilde"));
+        let positive_look_ahead = Terminal(Arc::from("PositiveLookAhead"));
+        let negative_look_ahead = Terminal(Arc::from("NegativeLookAhead"));
+        let positive_look_behind = Terminal(Arc::from("PositiveLookBehind"));
+        let negative_look_behind = Terminal(Arc::from("NegativeLookBehind"));
+        let empty = Terminal(Arc::from("Empty"));
+        let literal = Terminal(Arc::from("Literal"));
+        let regex = Terminal(Arc::from("Regex"));
+        let identifier = Terminal(Arc::from("Identifier"));
+        let comment = Terminal(Arc::from("Comment"));
+        let whitespace = Terminal(Arc::from("Whitespace"));
 
         vec![
             Rule {

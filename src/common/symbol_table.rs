@@ -18,27 +18,6 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    #[must_use]
-    pub fn from_maps(
-        terminals: HashMap<String, Terminal>,
-        non_terminals: HashMap<String, NonTerminal>,
-    ) -> Self {
-        let mut terminal_names = HashMap::new();
-        for (name, terminal) in &terminals {
-            terminal_names.insert(terminal.clone(), name.clone());
-        }
-        let mut non_terminal_names = HashMap::new();
-        for (name, non_terminal) in &non_terminals {
-            non_terminal_names.insert(non_terminal.clone(), name.clone());
-        }
-        Self {
-            non_terminals,
-            terminals,
-            non_terminal_names,
-            terminal_names,
-        }
-    }
-
     pub fn insert_non_terminal(&mut self, non_terminal_name: String) -> NonTerminal {
         if let Some(non_terminal) = self.non_terminals.get(&non_terminal_name) {
             non_terminal.clone()

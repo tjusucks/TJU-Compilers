@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lalr::{Rhs, Symbol};
+use lalr::Symbol;
 use rustcc::common::action::DefaultAction;
 use rustcc::common::grammar_rules::GrammarRules;
 use rustcc::common::parse_table::ParseTable;

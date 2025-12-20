@@ -136,12 +136,12 @@ impl fmt::Display for ParseTreeNode {
             let pad = "  ".repeat(indent);
             match node {
                 ParseTreeNode::Terminal { token, lexeme, .. } => {
-                    writeln!(fmt, "{pad}(Terminal {:?} \"{}\")", token, lexeme)
+                    writeln!(fmt, "{pad}({} \"{}\")", token.0, lexeme)
                 }
                 ParseTreeNode::NonTerminal {
                     symbol, children, ..
                 } => {
-                    writeln!(fmt, "{pad}(NonTerminal {:?}", symbol)?;
+                    writeln!(fmt, "{pad}({}", symbol.0)?;
                     for child in children {
                         fmt_sexpr(child, fmt, indent + 1)?;
                     }
