@@ -85,16 +85,15 @@ impl ParseTreeNode {
             let pad = "  ".repeat(indent);
             match node {
                 ParseTreeNode::Terminal { token, lexeme, .. } => {
-                    let terminal_name = table
-                        .get_terminal_name(*token)
-                        .unwrap_or("UNKNOWN_TERMINAL");
+                    let terminal_name =
+                        table.get_terminal_name(token).unwrap_or("UNKNOWN_TERMINAL");
                     buf.push_str(&format!("{pad}({terminal_name} \"{lexeme}\")\n"));
                 }
                 ParseTreeNode::NonTerminal {
                     symbol, children, ..
                 } => {
                     let nonterminal_name = table
-                        .get_non_terminal_name(*symbol)
+                        .get_non_terminal_name(symbol)
                         .unwrap_or("UNKNOWN_NONTERMINAL");
                     buf.push_str(&format!("{pad}({nonterminal_name}\n"));
                     for child in children {
@@ -118,13 +117,13 @@ impl ParseTreeNode {
     }
 
     #[must_use]
-    pub fn is_terminal(&self, token: Terminal) -> bool {
-        matches!(self, Self::Terminal { token: t, .. } if *t == token)
+    pub fn is_terminal(&self, token: &Terminal) -> bool {
+        matches!(self, Self::Terminal { token: t, .. } if t == token)
     }
 
     #[must_use]
-    pub fn is_non_terminal(&self, symbol: NonTerminal) -> bool {
-        matches!(self, Self::NonTerminal { symbol: s, .. } if *s == symbol)
+    pub fn is_non_terminal(&self, symbol: &NonTerminal) -> bool {
+        matches!(self, Self::NonTerminal { symbol: s, .. } if s == symbol)
     }
 
     #[must_use]

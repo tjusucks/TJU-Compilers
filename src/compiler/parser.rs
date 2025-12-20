@@ -47,7 +47,7 @@ where
                     let state = *state_stack.last().unwrap();
                     let next_state = parse_table.states[state].goto.get(non_terminal).unwrap();
                     state_stack.push(*next_state);
-                    self.semantic_action.on_reduce(**non_terminal, rhs);
+                    self.semantic_action.on_reduce(non_terminal, rhs);
                 }
                 Some(LRAction::Shift(next_state)) => {
                     state_stack.push(*next_state);

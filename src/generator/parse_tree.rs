@@ -34,7 +34,7 @@ impl ParseTreeNode {
         let pipe = symbol_table().get_terminal_id("Pipe").unwrap();
 
         // Only collect terms if the node is an expression.
-        if !self.is_non_terminal(expression) {
+        if !self.is_non_terminal(&expression) {
             return Err("Collect terms call on non-expression node".to_string());
         }
         let children = self.get_children();
@@ -45,9 +45,9 @@ impl ParseTreeNode {
 
         let mut terminals = Vec::new();
         for child in children {
-            if child.is_non_terminal(term) {
+            if child.is_non_terminal(&term) {
                 terminals.push(child.get_factors().unwrap());
-            } else if !child.is_terminal(pipe) {
+            } else if !child.is_terminal(&pipe) {
                 return Err(format!("Unexpected child in expression: {child}"));
             }
         }
@@ -61,15 +61,15 @@ impl ParseTreeNode {
         let empty = symbol_table().get_terminal_id("Empty").unwrap();
 
         // Only collect factors if the node is a term.
-        if !self.is_non_terminal(term) {
+        if !self.is_non_terminal(&term) {
             return Err("Collect factors call on non-term node".to_string());
         }
         let children = self.get_children();
 
-        if children.len() == 1 && children[0].is_terminal(empty) {
+        if children.len() == 1 && children[0].is_terminal(&empty) {
             // Child is epsilon.
             Ok(vec![Symbol::Epsilon])
-        } else if children[0].is_non_terminal(factor) {
+        } else if children[0].is_non_terminal(&factor) {
             // Children are factors.
             let mut terminals = Vec::new();
             for child in children {
@@ -89,7 +89,7 @@ impl ParseTreeNode {
             .unwrap();
 
         // Only collect atoms if the node is a factor.
-        if !self.is_non_terminal(factor) {
+        if !self.is_non_terminal(&factor) {
             return Err("Collect atom call on non-factor node".to_string());
         }
         let children = self.get_children();
@@ -97,7 +97,7 @@ impl ParseTreeNode {
             return Err("Factor has no children".to_string());
         }
         // Skip leading and trailing repetitions.
-        if children[0].is_non_terminal(factor_repetition) {
+        if children[0].is_non_terminal(&factor_repetition) {
             // Skip leading repetition.
             children[1].to_symbol()
         } else {

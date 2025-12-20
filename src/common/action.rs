@@ -8,7 +8,7 @@ pub trait Action {
     type ParseResult;
     type ParseError;
 
-    fn on_reduce(&mut self, non_terminal: NonTerminal, rhs: &Rhs<Terminal, NonTerminal, ()>);
+    fn on_reduce(&mut self, non_terminal: &NonTerminal, rhs: &Rhs<Terminal, NonTerminal, ()>);
     fn on_shift(&mut self, token: Token<Terminal>);
     fn on_accept(&mut self) -> Self::ParseResult;
     // fn on_error(&mut self);
@@ -32,7 +32,11 @@ impl Action for DefaultAction {
     type ParseResult = ParseTreeNode;
     type ParseError = ParseError;
 
-    fn on_reduce(&mut self, non_terminal: NonTerminal, rhs: &lalr::Rhs<Terminal, NonTerminal, ()>) {
+    fn on_reduce(
+        &mut self,
+        non_terminal: &NonTerminal,
+        rhs: &lalr::Rhs<Terminal, NonTerminal, ()>,
+    ) {
         // Build nonterminal node.
         let length = rhs.syms.len();
         let mut children = Vec::with_capacity(length);
@@ -43,7 +47,8 @@ impl Action for DefaultAction {
             }
         }
         children.reverse();
-        let new_node = ParseTreeNode::non_terminal(non_terminal, children, Span::new(0, 0, 1, 1));
+        let new_node =
+            ParseTreeNode::non_terminal(non_terminal.clone(), children, Span::new(0, 0, 1, 1));
         self.node_stack.push(new_node);
     }
 
@@ -55,6 +60,6 @@ impl Action for DefaultAction {
 
     fn on_accept(&mut self) -> Self::ParseResult {
         let children = std::mem::take(&mut self.node_stack);
-        ParseTreeNode::non_terminal(self.start_symbol, children, Span::new(0, 0, 1, 1))
+        ParseTreeNode::non_terminal(self.start_symbol.clone(), children, Span::new(0, 0, 1, 1))
     }
 }

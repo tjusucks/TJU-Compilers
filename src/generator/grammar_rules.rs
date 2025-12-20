@@ -55,208 +55,217 @@ pub fn grammar_rules() -> &'static GrammarRules {
 
         // grammar = { directive | rule }
         rules.push(Rule {
-            non_terminal: grammar,
-            rhs: vec![Symbol::Nonterminal(grammar), Symbol::Nonterminal(directive)],
+            non_terminal: grammar.clone(),
+            rhs: vec![
+                Symbol::Nonterminal(grammar.clone()),
+                Symbol::Nonterminal(directive.clone()),
+            ],
         });
         rules.push(Rule {
-            non_terminal: grammar,
-            rhs: vec![Symbol::Nonterminal(grammar), Symbol::Nonterminal(rule)],
+            non_terminal: grammar.clone(),
+            rhs: vec![
+                Symbol::Nonterminal(grammar.clone()),
+                Symbol::Nonterminal(rule.clone()),
+            ],
         });
         rules.push(Rule {
-            non_terminal: grammar,
+            non_terminal: grammar.clone(),
             rhs: vec![],
         });
 
         // directive = "@" IDENTIFIER "=" value
         rules.push(Rule {
-            non_terminal: directive,
+            non_terminal: directive.clone(),
             rhs: vec![
-                Symbol::Terminal(at),
-                Symbol::Terminal(left_identifier),
-                Symbol::Terminal(equal),
-                Symbol::Nonterminal(value),
+                Symbol::Terminal(at.clone()),
+                Symbol::Terminal(left_identifier.clone()),
+                Symbol::Terminal(equal.clone()),
+                Symbol::Nonterminal(value.clone()),
             ],
         });
 
         // value = LITERAL | REGEX | list
         rules.push(Rule {
-            non_terminal: value,
-            rhs: vec![Symbol::Terminal(literal)],
+            non_terminal: value.clone(),
+            rhs: vec![Symbol::Terminal(literal.clone())],
         });
         rules.push(Rule {
-            non_terminal: value,
-            rhs: vec![Symbol::Terminal(regex)],
+            non_terminal: value.clone(),
+            rhs: vec![Symbol::Terminal(regex.clone())],
         });
         rules.push(Rule {
-            non_terminal: value,
-            rhs: vec![Symbol::Nonterminal(list)],
+            non_terminal: value.clone(),
+            rhs: vec![Symbol::Nonterminal(list.clone())],
         });
 
         // list = IDENTIFIER { "," IDENTIFIER }
         rules.push(Rule {
-            non_terminal: list,
+            non_terminal: list.clone(),
             rhs: vec![
-                Symbol::Nonterminal(list),
-                Symbol::Terminal(comma),
-                Symbol::Terminal(identifier),
+                Symbol::Nonterminal(list.clone()),
+                Symbol::Terminal(comma.clone()),
+                Symbol::Terminal(identifier.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: list,
-            rhs: vec![Symbol::Terminal(identifier)],
+            non_terminal: list.clone(),
+            rhs: vec![Symbol::Terminal(identifier.clone())],
         });
 
         // rule = IDENTIFIER "=" expression
         rules.push(Rule {
-            non_terminal: rule,
+            non_terminal: rule.clone(),
             rhs: vec![
-                Symbol::Terminal(left_identifier),
-                Symbol::Terminal(equal),
-                Symbol::Nonterminal(expression),
+                Symbol::Terminal(left_identifier.clone()),
+                Symbol::Terminal(equal.clone()),
+                Symbol::Nonterminal(expression.clone()),
             ],
         });
 
         // expression = term { "|" term }
         rules.push(Rule {
-            non_terminal: expression,
+            non_terminal: expression.clone(),
             rhs: vec![
-                Symbol::Nonterminal(expression),
-                Symbol::Terminal(pipe),
-                Symbol::Nonterminal(term),
+                Symbol::Nonterminal(expression.clone()),
+                Symbol::Terminal(pipe.clone()),
+                Symbol::Nonterminal(term.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: expression,
-            rhs: vec![Symbol::Nonterminal(term)],
+            non_terminal: expression.clone(),
+            rhs: vec![Symbol::Nonterminal(term.clone())],
         });
 
         // term = factor { factor } | EMPTY
         rules.push(Rule {
-            non_terminal: term,
-            rhs: vec![Symbol::Nonterminal(term), Symbol::Nonterminal(factor)],
+            non_terminal: term.clone(),
+            rhs: vec![
+                Symbol::Nonterminal(term.clone()),
+                Symbol::Nonterminal(factor.clone()),
+            ],
         });
         rules.push(Rule {
-            non_terminal: term,
-            rhs: vec![Symbol::Nonterminal(factor)],
+            non_terminal: term.clone(),
+            rhs: vec![Symbol::Nonterminal(factor.clone())],
         });
         rules.push(Rule {
-            non_terminal: term,
-            rhs: vec![Symbol::Terminal(empty)],
+            non_terminal: term.clone(),
+            rhs: vec![Symbol::Terminal(empty.clone())],
         });
 
         // factor = { WHITESPACE } atom { WHITESPACE } [ lookahead ]
         rules.push(Rule {
-            non_terminal: factor,
+            non_terminal: factor.clone(),
             rhs: vec![
-                Symbol::Nonterminal(factor_repetition),
-                Symbol::Nonterminal(atom),
-                Symbol::Nonterminal(factor_repetition),
-                Symbol::Nonterminal(lookahead),
+                Symbol::Nonterminal(factor_repetition.clone()),
+                Symbol::Nonterminal(atom.clone()),
+                Symbol::Nonterminal(factor_repetition.clone()),
+                Symbol::Nonterminal(lookahead.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: factor,
+            non_terminal: factor.clone(),
             rhs: vec![
-                Symbol::Nonterminal(factor_repetition),
-                Symbol::Nonterminal(atom),
-                Symbol::Nonterminal(factor_repetition),
+                Symbol::Nonterminal(factor_repetition.clone()),
+                Symbol::Nonterminal(atom.clone()),
+                Symbol::Nonterminal(factor_repetition.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: factor_repetition,
+            non_terminal: factor_repetition.clone(),
             rhs: vec![
-                Symbol::Nonterminal(factor_repetition),
-                Symbol::Terminal(tilde),
+                Symbol::Nonterminal(factor_repetition.clone()),
+                Symbol::Terminal(tilde.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: factor_repetition,
+            non_terminal: factor_repetition.clone(),
             rhs: vec![],
         });
 
         // atom = LITERAL | IDENTIFIER ! "=" | REGEX | group | optional | repetition
         rules.push(Rule {
-            non_terminal: atom,
-            rhs: vec![Symbol::Terminal(literal)],
+            non_terminal: atom.clone(),
+            rhs: vec![Symbol::Terminal(literal.clone())],
         });
         rules.push(Rule {
-            non_terminal: atom,
-            rhs: vec![Symbol::Terminal(identifier)],
+            non_terminal: atom.clone(),
+            rhs: vec![Symbol::Terminal(identifier.clone())],
         });
         rules.push(Rule {
-            non_terminal: atom,
-            rhs: vec![Symbol::Terminal(regex)],
+            non_terminal: atom.clone(),
+            rhs: vec![Symbol::Terminal(regex.clone())],
         });
         rules.push(Rule {
-            non_terminal: atom,
-            rhs: vec![Symbol::Nonterminal(group)],
+            non_terminal: atom.clone(),
+            rhs: vec![Symbol::Nonterminal(group.clone())],
         });
         rules.push(Rule {
-            non_terminal: atom,
-            rhs: vec![Symbol::Nonterminal(optional)],
+            non_terminal: atom.clone(),
+            rhs: vec![Symbol::Nonterminal(optional.clone())],
         });
         rules.push(Rule {
-            non_terminal: atom,
-            rhs: vec![Symbol::Nonterminal(repetition)],
+            non_terminal: atom.clone(),
+            rhs: vec![Symbol::Nonterminal(repetition.clone())],
         });
 
         // group = "(" expression ")"
         rules.push(Rule {
-            non_terminal: group,
+            non_terminal: group.clone(),
             rhs: vec![
-                Symbol::Terminal(left_parentheses),
-                Symbol::Nonterminal(expression),
-                Symbol::Terminal(right_parentheses),
+                Symbol::Terminal(left_parentheses.clone()),
+                Symbol::Nonterminal(expression.clone()),
+                Symbol::Terminal(right_parentheses.clone()),
             ],
         });
 
         // optional = "[" expression "]"
         rules.push(Rule {
-            non_terminal: optional,
+            non_terminal: optional.clone(),
             rhs: vec![
-                Symbol::Terminal(left_bracket),
-                Symbol::Nonterminal(expression),
-                Symbol::Terminal(right_bracket),
+                Symbol::Terminal(left_bracket.clone()),
+                Symbol::Nonterminal(expression.clone()),
+                Symbol::Terminal(right_bracket.clone()),
             ],
         });
 
         // repetition = "{" expression "}"
         rules.push(Rule {
-            non_terminal: repetition,
+            non_terminal: repetition.clone(),
             rhs: vec![
-                Symbol::Terminal(left_brace),
-                Symbol::Nonterminal(expression),
-                Symbol::Terminal(right_brace),
+                Symbol::Terminal(left_brace.clone()),
+                Symbol::Nonterminal(expression.clone()),
+                Symbol::Terminal(right_brace.clone()),
             ],
         });
 
         // lookahead = (POSITIVE_LOOKAHEAD | NEGATIVE_LOOKAHEAD | POSITIVE_LOOKBEHIND | NEGATIVE_LOOKBEHIND) factor
         rules.push(Rule {
-            non_terminal: lookahead,
+            non_terminal: lookahead.clone(),
             rhs: vec![
-                Symbol::Nonterminal(lookahead_group),
-                Symbol::Nonterminal(factor),
+                Symbol::Nonterminal(lookahead_group.clone()),
+                Symbol::Nonterminal(factor.clone()),
             ],
         });
         rules.push(Rule {
-            non_terminal: lookahead_group,
-            rhs: vec![Symbol::Terminal(positive_look_ahead)],
+            non_terminal: lookahead_group.clone(),
+            rhs: vec![Symbol::Terminal(positive_look_ahead.clone())],
         });
         rules.push(Rule {
-            non_terminal: lookahead_group,
-            rhs: vec![Symbol::Terminal(negative_look_ahead)],
+            non_terminal: lookahead_group.clone(),
+            rhs: vec![Symbol::Terminal(negative_look_ahead.clone())],
         });
         rules.push(Rule {
-            non_terminal: lookahead_group,
-            rhs: vec![Symbol::Terminal(positive_look_behind)],
+            non_terminal: lookahead_group.clone(),
+            rhs: vec![Symbol::Terminal(positive_look_behind.clone())],
         });
         rules.push(Rule {
-            non_terminal: lookahead_group,
-            rhs: vec![Symbol::Terminal(negative_look_behind)],
+            non_terminal: lookahead_group.clone(),
+            rhs: vec![Symbol::Terminal(negative_look_behind.clone())],
         });
 
         GrammarRules {
-            start_symbol: grammar,
+            start_symbol: grammar.clone(),
             rules,
         }
     })

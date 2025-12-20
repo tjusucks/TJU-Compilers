@@ -20,14 +20,14 @@ impl ParseTable {
     {
         let mut grammar: Grammar<Terminal, NonTerminal, ()> = Grammar {
             rules: std::collections::BTreeMap::new(),
-            start: grammar_rules.start_symbol,
+            start: grammar_rules.start_symbol.clone(),
         };
 
         for rule in &grammar_rules.rules {
             // The entire rule.rhs should be one production, not individual symbols
             grammar
                 .rules
-                .entry(rule.non_terminal)
+                .entry(rule.non_terminal.clone())
                 .or_default()
                 .push(Rhs {
                     syms: rule.rhs.clone(),

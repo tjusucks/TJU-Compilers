@@ -1,30 +1,31 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use relex::TokenKind;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Terminal(pub usize);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Terminal(pub Arc<str>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct NonTerminal(pub usize);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct NonTerminal(pub Arc<str>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SymbolTable {
     non_terminals: HashMap<String, NonTerminal>,
     terminals: HashMap<String, Terminal>,
-    non_terminal_names: Vec<String>,
-    terminal_names: Vec<String>,
+    non_terminal_names: HashMap<NonTerminal, String>,
+    terminal_names: HashMap<Terminal, String>,
 }
 
 impl Terminal {
     pub fn to_string(self, symbol_table: &SymbolTable) -> Option<&str> {
-        symbol_table.get_terminal_name(self)
+        symbol_table.get_terminal_name(&self)
     }
 }
 
 impl NonTerminal {
     pub fn to_string(self, symbol_table: &SymbolTable) -> Option<&str> {
-        symbol_table.get_non_terminal_name(self)
+        symbol_table.get_non_terminal_name(&self)
     }
 }
 
@@ -34,13 +35,13 @@ impl SymbolTable {
         terminals: HashMap<String, Terminal>,
         non_terminals: HashMap<String, NonTerminal>,
     ) -> Self {
-        let mut terminal_names = vec![String::new(); terminals.len()];
-        for (name, Terminal(id)) in &terminals {
-            terminal_names[*id] = name.clone();
+        let mut terminal_names = HashMap::new();
+        for (name, terminal) in &terminals {
+            terminal_names.insert(terminal.clone(), name.clone());
         }
-        let mut non_terminal_names = vec![String::new(); non_terminals.len()];
-        for (name, NonTerminal(id)) in &non_terminals {
-            non_terminal_names[*id] = name.clone();
+        let mut non_terminal_names = HashMap::new();
+        for (name, non_terminal) in &non_terminals {
+            non_terminal_names.insert(non_terminal.clone(), name.clone());
         }
         Self {
             non_terminals,
@@ -51,58 +52,60 @@ impl SymbolTable {
     }
 
     pub fn insert_non_terminal(&mut self, non_terminal_name: String) -> NonTerminal {
-        if self.non_terminals.contains_key(&non_terminal_name) {
-            self.non_terminals[&non_terminal_name]
+        if let Some(non_terminal) = self.non_terminals.get(&non_terminal_name) {
+            non_terminal.clone()
         } else {
-            let non_terminal_id = self.non_terminals.len();
-            let non_terminal = NonTerminal(non_terminal_id);
+            let arc_name = Arc::from(non_terminal_name.clone().into_boxed_str());
+            let non_terminal = NonTerminal(arc_name);
             self.non_terminals
-                .insert(non_terminal_name.clone(), non_terminal);
-            self.non_terminal_names.push(non_terminal_name);
+                .insert(non_terminal_name.clone(), non_terminal.clone());
+            self.non_terminal_names
+                .insert(non_terminal.clone(), non_terminal_name);
             non_terminal
         }
     }
 
     pub fn insert_terminal(&mut self, terminal_name: String) -> Terminal {
-        if self.terminals.contains_key(&terminal_name) {
-            self.terminals[&terminal_name]
+        if let Some(terminal) = self.terminals.get(&terminal_name) {
+            terminal.clone()
         } else {
-            let terminal_id = self.terminals.len();
-            let terminal = Terminal(terminal_id);
-            self.terminals.insert(terminal_name.clone(), terminal);
-            self.terminal_names.push(terminal_name);
+            let arc_name = Arc::from(terminal_name.clone().into_boxed_str());
+            let terminal = Terminal(arc_name);
+            self.terminals
+                .insert(terminal_name.clone(), terminal.clone());
+            self.terminal_names.insert(terminal.clone(), terminal_name);
             terminal
         }
     }
 
     #[must_use]
     pub fn get_non_terminal_id(&self, non_terminal: &str) -> Option<NonTerminal> {
-        self.non_terminals.get(non_terminal).copied()
+        self.non_terminals.get(non_terminal).cloned()
     }
 
     #[must_use]
     pub fn get_terminal_id(&self, terminal: &str) -> Option<Terminal> {
-        self.terminals.get(terminal).copied()
+        self.terminals.get(terminal).cloned()
     }
 
-    pub fn get_terminal_name(&self, terminal: Terminal) -> Option<&str> {
-        self.terminal_names
-            .get(terminal.0)
+    pub fn get_non_terminal_name(&self, non_terminal: &NonTerminal) -> Option<&str> {
+        self.non_terminal_names
+            .get(non_terminal)
             .map(std::string::String::as_str)
     }
 
-    pub fn get_non_terminal_name(&self, non_terminal: NonTerminal) -> Option<&str> {
-        self.non_terminal_names
-            .get(non_terminal.0)
+    pub fn get_terminal_name(&self, terminal: &Terminal) -> Option<&str> {
+        self.terminal_names
+            .get(terminal)
             .map(std::string::String::as_str)
     }
 }
 
 impl TokenKind for Terminal {
     fn unrecognized() -> Self {
-        Self(usize::MAX)
+        Self(Arc::from("<UNRECOGNIZED>"))
     }
     fn eof() -> Self {
-        Self(usize::MAX - 1)
+        Self(Arc::from("<EOF>"))
     }
 }

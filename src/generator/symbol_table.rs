@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use crate::common::symbol_table::{NonTerminal, SymbolTable, Terminal};
 
@@ -65,14 +65,12 @@ pub fn symbol_table() -> &'static SymbolTable {
 
         let terminals: HashMap<String, Terminal> = terminal_names
             .iter()
-            .enumerate()
-            .map(|(index, name)| ((*name).to_string(), Terminal(index)))
+            .map(|name| ((*name).to_string(), Terminal(Arc::from(*name))))
             .collect();
 
         let non_terminals: HashMap<String, NonTerminal> = non_terminal_names
             .iter()
-            .enumerate()
-            .map(|(index, name)| ((*name).to_string(), NonTerminal(index)))
+            .map(|name| ((*name).to_string(), NonTerminal(Arc::from(*name))))
             .collect();
 
         SymbolTable::from_maps(terminals, non_terminals)

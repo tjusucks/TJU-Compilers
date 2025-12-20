@@ -273,7 +273,7 @@ impl GeneratorAction {
                     }
                 }
                 self.grammar_rules.rules.push(GrammarRule {
-                    non_terminal: *lhs,
+                    non_terminal: lhs.clone(),
                     rhs: lalr_symbols,
                 });
             }
@@ -303,7 +303,12 @@ impl Action for GeneratorAction {
     type ParseResult = GeneratorResult;
     type ParseError = ParseError;
 
-    fn on_reduce(&mut self, non_terminal: NonTerminal, rhs: &lalr::Rhs<Terminal, NonTerminal, ()>) {
+    fn on_reduce(
+        &mut self,
+        non_terminal: &NonTerminal,
+        rhs: &lalr::Rhs<Terminal, NonTerminal, ()>,
+    ) {
+        let non_terminal = non_terminal.clone();
         let table = symbol_table();
 
         let grammar = table.get_non_terminal_id("Grammar").unwrap();
@@ -326,7 +331,7 @@ impl Action for GeneratorAction {
             let mut children = Vec::with_capacity(length);
             for _ in 0..length {
                 if let Some(child) = self.node_stack.pop() {
-                    if child.is_non_terminal(non_terminal) {
+                    if child.is_non_terminal(&non_terminal) {
                         children.extend(child.collect_children().into_iter().rev());
                     } else {
                         children.push(child);
@@ -335,7 +340,7 @@ impl Action for GeneratorAction {
             }
             children.reverse();
             let new_node =
-                ParseTreeNode::non_terminal(non_terminal, children, Span::new(0, 0, 1, 1));
+                ParseTreeNode::non_terminal(non_terminal.clone(), children, Span::new(0, 0, 1, 1));
             self.node_stack.push(new_node);
         } else {
             // Default case: build normal nonterminal node, filtering out empty factor repetitions.
@@ -343,14 +348,14 @@ impl Action for GeneratorAction {
             for _ in 0..length {
                 if let Some(child) = self.node_stack.pop() {
                     // Filter out empty factor repetitions.
-                    if !(child.is_non_terminal(factor_repetition) && child.is_empty()) {
+                    if !(child.is_non_terminal(&factor_repetition) && child.is_empty()) {
                         children.push(child);
                     }
                 }
             }
             children.reverse();
             let new_node =
-                ParseTreeNode::non_terminal(non_terminal, children, Span::new(0, 0, 1, 1));
+                ParseTreeNode::non_terminal(non_terminal.clone(), children, Span::new(0, 0, 1, 1));
             self.node_stack.push(new_node);
         }
 
