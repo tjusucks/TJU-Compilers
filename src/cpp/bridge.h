@@ -18,4 +18,4 @@ struct BridgeToken {
 };
 
 // Return a pointer to a heap-allocated vector
-std::unique_ptr<std::vector<BridgeToken>> tokenize_cpp(rust::Str input);
+std::unique_ptr<std::vector<BridgeToken>> tokenize(rust::Str input);

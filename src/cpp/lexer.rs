@@ -1,4 +1,3 @@
-// Define the bridge module.
 #[cxx::bridge]
 pub mod ffi {
     unsafe extern "C++" {
@@ -7,7 +6,7 @@ pub mod ffi {
         type BridgeToken;
 
         // Bind the C++ function.
-        fn tokenize_cpp(input: &str) -> UniquePtr<CxxVector<BridgeToken>>;
+        fn tokenize(input: &str) -> UniquePtr<CxxVector<BridgeToken>>;
 
         // Expose the C++ getters to Rust.
         fn get_kind(self: &BridgeToken) -> String;
