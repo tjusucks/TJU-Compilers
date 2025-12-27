@@ -13,7 +13,7 @@ use rustcc::generator::processor::Processor;
 use rustcc::generator::token_rules::token_rules;
 
 #[test]
-fn test_generated_lexer_tokenization() {
+fn self_reference() {
     // Example EBNF input string.
     let input = r#"
         # EBNF Grammar.
