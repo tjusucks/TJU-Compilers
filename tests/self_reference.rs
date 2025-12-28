@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use lalr::Symbol;
 use rustcc::common::action::DefaultAction;
+use rustcc::common::grammar::Symbol;
 use rustcc::common::grammar_rules::GrammarRules;
 use rustcc::common::parse_table::ParseTable;
 use rustcc::common::symbol_table::Terminal;

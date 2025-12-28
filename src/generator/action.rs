@@ -294,14 +294,16 @@ impl GeneratorAction {
     fn build_grammar_rules(&mut self) {
         for (lhs, rhs_alternatives) in &self.rules {
             for rhs in rhs_alternatives {
-                let mut lalr_symbols: Vec<lalr::Symbol<Terminal, NonTerminal>> = Vec::new();
+                let mut lalr_symbols: Vec<crate::common::grammar::Symbol<Terminal, NonTerminal>> =
+                    Vec::new();
                 if rhs.len() != 1 || rhs[0] != "EPSILON" {
                     for symbol in rhs {
                         let symbol = unquote(symbol);
                         if let Some(non_terminal) = self.symbol_table.get_non_terminal_id(symbol) {
-                            lalr_symbols.push(lalr::Symbol::Nonterminal(non_terminal));
+                            lalr_symbols
+                                .push(crate::common::grammar::Symbol::Nonterminal(non_terminal));
                         } else if let Some(terminal) = self.symbol_table.get_terminal_id(symbol) {
-                            lalr_symbols.push(lalr::Symbol::Terminal(terminal));
+                            lalr_symbols.push(crate::common::grammar::Symbol::Terminal(terminal));
                         } else {
                             panic!("Symbol not found in symbol table: {symbol}");
                         }
@@ -349,7 +351,7 @@ impl Action for GeneratorAction {
     fn on_reduce(
         &mut self,
         non_terminal: &NonTerminal,
-        rhs: &lalr::Rhs<Terminal, NonTerminal, ()>,
+        rhs: &crate::common::grammar::Rhs<Terminal, NonTerminal, ()>,
     ) {
         let non_terminal = non_terminal.clone();
         let grammar = NonTerminal(Arc::from("Grammar"));

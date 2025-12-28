@@ -1,5 +1,4 @@
-use lalr::Symbol;
-
+use crate::common::grammar::Symbol;
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

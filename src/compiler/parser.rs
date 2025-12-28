@@ -1,7 +1,7 @@
-use lalr::{LR1ParseTable, LRAction};
 use relex::{Token, TokenKind};
 
 use crate::common::action::Action;
+use crate::common::grammar::{LR1ParseTable, LRAction};
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
 pub struct Parser<'a, Action> {

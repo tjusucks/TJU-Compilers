@@ -1,5 +1,4 @@
-use lalr::{Grammar, LR1ParseTable, Rhs};
-
+use crate::common::grammar::{Grammar, LR1ParseTable, Rhs};
 use crate::common::grammar_rules::GrammarRules;
 use crate::common::symbol_table::{NonTerminal, Terminal};
 

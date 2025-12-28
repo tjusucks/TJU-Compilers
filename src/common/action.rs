@@ -1,6 +1,6 @@
-use lalr::Rhs;
 use relex::Token;
 
+use crate::common::grammar::Rhs;
 use crate::common::parse_tree::{ParseError, ParseTreeNode, Span};
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
@@ -19,7 +19,7 @@ pub struct DefaultAction {
 }
 
 impl DefaultAction {
-    #[must_use] 
+    #[must_use]
     pub const fn new(start_symbol: NonTerminal) -> Self {
         Self {
             node_stack: Vec::new(),
@@ -35,7 +35,7 @@ impl Action for DefaultAction {
     fn on_reduce(
         &mut self,
         non_terminal: &NonTerminal,
-        rhs: &lalr::Rhs<Terminal, NonTerminal, ()>,
+        rhs: &crate::common::grammar::Rhs<Terminal, NonTerminal, ()>,
     ) {
         // Build nonterminal node.
         let length = rhs.syms.len();

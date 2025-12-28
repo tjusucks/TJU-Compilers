@@ -1,7 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
-use lalr::{Rhs, Symbol};
-
+use crate::common::grammar::{Rhs, Symbol};
 use crate::common::grammar_rules::{GrammarRules, Rule};
 use crate::common::symbol_table::{NonTerminal, Terminal};
 
@@ -10,7 +9,6 @@ use crate::common::symbol_table::{NonTerminal, Terminal};
 pub fn grammar_rules() -> &'static GrammarRules {
     static GRAMMAR_RULES: OnceLock<GrammarRules> = OnceLock::new();
     GRAMMAR_RULES.get_or_init(|| {
-
         // Terminal symbols.
         let at = Terminal(Arc::from("At"));
         let equal = Terminal(Arc::from("Equal"));

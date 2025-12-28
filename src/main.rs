@@ -2,9 +2,8 @@
 
 use std::sync::Arc;
 
-use lalr::Symbol;
-
 use crate::common::action::DefaultAction;
+use crate::common::grammar::Symbol;
 use crate::common::grammar_rules::GrammarRules;
 use crate::common::parse_table::ParseTable;
 use crate::common::symbol_table::Terminal;
