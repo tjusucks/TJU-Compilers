@@ -3,9 +3,13 @@ use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, VecDeque, btree_map};
 use std::fmt::{self, Debug, Display};
 
-pub use Symbol::*;
+/// Type alias for LR(0) state machine states - each state has an item set and transitions
+type LR0States<'a, T, N, A> = Vec<(ItemSet<'a, T, N, A>, BTreeMap<&'a Symbol<T, N>, usize>)>;
 
-// "T" = terminal, and "N" = nonterminal.
+/// Type alias for the result of advancing an item
+type AdvanceResult<'a, T, N, A> = Option<(&'a Symbol<T, N>, Item<'a, T, N, A>)>;
+
+pub use Symbol::*;
 
 /// A symbol in a context-free grammar.
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone)]
@@ -81,8 +85,8 @@ pub struct Item<'a, T: 'a, N: 'a, A: 'a> {
 }
 comparators!(Item('a, T, N, A) (T, N) (lhs, rhs, pos));
 
-impl<'a, T, N, A> Clone for Item<'a, T, N, A> {
-    fn clone(&self) -> Item<'a, T, N, A> {
+impl<T, N, A> Clone for Item<'_, T, N, A> {
+    fn clone(&self) -> Self {
         Item {
             lhs: self.lhs,
             rhs: self.rhs,
@@ -98,8 +102,8 @@ pub struct ItemSet<'a, T: 'a, N: 'a, A: 'a> {
 }
 comparators!(ItemSet('a, T, N, A) (T, N) (items));
 
-impl<'a, T, N, A> Clone for ItemSet<'a, T, N, A> {
-    fn clone(&self) -> ItemSet<'a, T, N, A> {
+impl<T, N, A> Clone for ItemSet<'_, T, N, A> {
+    fn clone(&self) -> Self {
         ItemSet {
             items: self.items.clone(),
         }
@@ -123,7 +127,7 @@ pub struct LR0StateMachine<'a, T: 'a, N: 'a, A: 'a> {
     /// A vector of states, each of which consists of an item set and a set of transitions.
     ///
     /// State 0 is the starting state.
-    pub states: Vec<(ItemSet<'a, T, N, A>, BTreeMap<&'a Symbol<T, N>, usize>)>,
+    pub states: LR0States<'a, T, N, A>,
     /// The starting state of the associated context-free grammar.
     pub start: &'a N,
 }
@@ -162,30 +166,40 @@ pub enum LR1Conflict<'a, T: 'a, N: 'a, A: 'a> {
     /// A reduce-reduce conflict.
     ReduceReduce {
         /// The LR(0) state in which the conflict occurs.
+        #[allow(dead_code)]
         state: ItemSet<'a, T, N, A>,
         /// The token leading to the conflict, or `None` if the token is EOF.
+        #[allow(dead_code)]
         token: Option<&'a T>,
         /// The first conflicting rule.
+        #[allow(dead_code)]
         r1: (&'a N, &'a Rhs<T, N, A>),
         /// The second conflicting rule.
+        #[allow(dead_code)]
         r2: (&'a N, &'a Rhs<T, N, A>),
     },
     /// A shift-reduce conflict.
     ShiftReduce {
         /// The LR(0) state in which the conflict appears.
+        #[allow(dead_code)]
         state: ItemSet<'a, T, N, A>,
         /// The token leading to the conflict, or `None` if the token is EOF.
+        #[allow(dead_code)]
         token: Option<&'a T>,
         /// The reduce rule involved in the conflict.
+        #[allow(dead_code)]
         rule: (&'a N, &'a Rhs<T, N, A>),
     },
 }
 
 impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
     /// Create the LR(0) state machine for a grammar.
+    ///
+    /// # Panics
+    /// Panics if the starting rule is not found in the grammar.
     pub fn lr0_state_machine<'a>(&'a self) -> LR0StateMachine<'a, T, N, A> {
         struct S<'a, T: 'a, N: 'a, A: 'a> {
-            states: Vec<(ItemSet<'a, T, N, A>, BTreeMap<&'a Symbol<T, N>, usize>)>,
+            states: LR0States<'a, T, N, A>,
             item_sets: BTreeMap<ItemSet<'a, T, N, A>, usize>,
             nubs: BTreeMap<ItemSet<'a, T, N, A>, usize>,
         }
@@ -210,18 +224,17 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 let mut completed: BTreeSet<_> = nub.items.clone();
                 let mut to_add: VecDeque<_> = nub.items.iter().cloned().collect();
                 while let Some(item) = to_add.pop_front() {
-                    if let Some(&Nonterminal(ref n)) = item.rhs.syms.get(item.pos) {
-                        if let Some(rules) = grammar.rules.get(n) {
-                            for rhs in rules.iter() {
-                                let new_item = Item {
-                                    lhs: n,
-                                    rhs: rhs,
-                                    pos: 0,
-                                };
-                                if !completed.contains(&new_item) {
-                                    to_add.push_back(new_item.clone());
-                                    completed.insert(new_item);
-                                }
+                    if let Some(Nonterminal(n)) = item.rhs.syms.get(item.pos)
+                        && let Some(rules) = grammar.rules.get(n)
+                    {
+                        for rhs in rules {
+                            let new_item = Item {
+                                lhs: n,
+                                rhs,
+                                pos: 0,
+                            };
+                            if completed.insert(new_item.clone()) {
+                                to_add.push_back(new_item);
                             }
                         }
                     }
@@ -231,9 +244,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 ix
             }
         }
-        fn advance<'a, 'b, T, N, A>(
-            i: &'b Item<'a, T, N, A>,
-        ) -> Option<(&'a Symbol<T, N>, Item<'a, T, N, A>)> {
+        fn advance<'a, T, N, A>(i: &Item<'a, T, N, A>) -> AdvanceResult<'a, T, N, A> {
             i.rhs.syms.get(i.pos).map(|s| {
                 (
                     s,
@@ -258,7 +269,10 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                     let mut r = BTreeSet::new();
                     r.insert(Item {
                         lhs: &self.start,
-                        rhs: &self.rules.get(&self.start).unwrap()[0],
+                        rhs: &self
+                            .rules
+                            .get(&self.start)
+                            .expect("Start rule not found in grammar")[0],
                         pos: 0,
                     });
                     r
@@ -267,13 +281,13 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
         );
         while finished < state.states.len() {
             let mut next_nubs = BTreeMap::new();
-            for item in state.states[finished].0.items.iter() {
+            for item in &state.states[finished].0.items {
                 if let Some((sym, next)) = advance(item) {
                     next_nubs.entry(sym).or_insert(BTreeSet::new()).insert(next);
                 }
             }
-            for (sym, items) in next_nubs.into_iter() {
-                let ix = state.complete_nub(self, ItemSet { items: items });
+            for (sym, items) in next_nubs {
+                let ix = state.complete_nub(self, ItemSet { items });
                 state.states[finished].1.insert(sym, ix);
             }
             finished += 1;
@@ -286,9 +300,12 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
 
     /// Compute the FIRST sets of the grammar.
     /// Returns a map from nonterminal to (first set, nullable).
+    ///
+    /// # Panics
+    /// Panics if a nonterminal referenced in the grammar rules is not found in the FIRST sets map.
     pub fn first_sets(&self) -> BTreeMap<&N, (BTreeSet<&T>, bool)> {
         let mut r = BTreeMap::new();
-        for (lhs, _) in self.rules.iter() {
+        for lhs in self.rules.keys() {
             r.insert(lhs, RefCell::new((BTreeSet::new(), false)));
         }
         loop {
@@ -297,8 +314,8 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
             // the `zip` is okay because `self.rules` and `r` have the same order
             for ((lhs, rhses), (_, cell)) in self.rules.iter().zip(r.iter()) {
                 let mut cell = cell.borrow_mut();
-                'outer: for rhs in rhses.iter() {
-                    for sym in rhs.syms.iter() {
+                'outer: for rhs in rhses {
+                    for sym in &rhs.syms {
                         match *sym {
                             Terminal(ref t) => {
                                 if cell.0.insert(t) {
@@ -313,8 +330,11 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                         continue 'outer;
                                     }
                                 } else {
-                                    let them = r.get(n).unwrap().borrow();
-                                    for &t in them.0.iter() {
+                                    let them = r
+                                        .get(n)
+                                        .expect("Nonterminal not found in first sets")
+                                        .borrow();
+                                    for &t in &them.0 {
                                         if cell.0.insert(t) {
                                             changed = true;
                                         }
@@ -343,19 +363,25 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
 
     /// Compute the FOLLOW sets of the grammar.
     /// Returns a map mapping from nonterminal to (follow set, whether follow set contains EOF)
+    ///
+    /// # Panics
+    /// Panics if a nonterminal referenced in the grammar rules is not found in the FOLLOW sets map.
     pub fn follow_sets<'a>(
         &'a self,
-        first: BTreeMap<&'a N, (BTreeSet<&'a T>, bool)>,
+        first: &BTreeMap<&'a N, (BTreeSet<&'a T>, bool)>,
     ) -> BTreeMap<&'a N, (BTreeSet<&'a T>, bool)> {
         let mut r = BTreeMap::new();
-        for (lhs, _) in self.rules.iter() {
+        for lhs in self.rules.keys() {
             r.insert(lhs, (BTreeSet::new(), *lhs == self.start));
         }
         loop {
             let mut changed = false;
-            for (lhs, rhses) in self.rules.iter() {
-                for rhs in rhses.iter() {
-                    let mut follow = r.get(lhs).unwrap().clone();
+            for (lhs, rhses) in &self.rules {
+                for rhs in rhses {
+                    let mut follow = r
+                        .get(lhs)
+                        .expect("Nonterminal not found in follow sets")
+                        .clone();
                     for sym in rhs.syms.iter().rev() {
                         match *sym {
                             Terminal(ref t) => {
@@ -364,8 +390,10 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                 follow.0.insert(t);
                             }
                             Nonterminal(ref n) => {
-                                let s = r.get_mut(n).unwrap();
-                                for &t in follow.0.iter() {
+                                let s = r
+                                    .get_mut(n)
+                                    .expect("Nonterminal not found in follow sets update");
+                                for &t in &follow.0 {
                                     if s.0.insert(t) {
                                         changed = true;
                                     }
@@ -374,12 +402,14 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                     s.1 = true;
                                     changed = true;
                                 }
-                                let &(ref f, nullable) = first.get(n).unwrap();
+                                let &(ref f, nullable) = first
+                                    .get(n)
+                                    .expect("Nonterminal not found in first sets lookup");
                                 if !nullable {
                                     follow.0.clear();
                                     follow.1 = false;
                                 }
-                                follow.0.extend(f.iter().map(|x| *x));
+                                follow.0.extend(f.iter().copied());
                             }
                         }
                     }
@@ -392,24 +422,19 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
         r
     }
 
-    /// Try to create an LALR(1) parse table out of the grammar.
+    /// Create an LALR(1) parse table out of the grammar.
     ///
-    /// You can tweak the behaviour of the parser in two ways:
+    /// # Errors
+    /// Returns `LR1Conflict` if the grammar has shift-reduce or reduce-reduce conflicts.
     ///
-    /// - `reduce_on` is a predicate, allowing you to control certain reduce rules based on the
-    ///   lookahead token. This function takes two parameters: the rule, given by its right-hand
-    ///   side, and the lookahead token (or `None` for EOF). You can use this to resolve
-    ///   shift-reduce conflicts. For example, you can solve the "dangling else" problem by
-    ///   forbidding the reduce action on an `else` token.
-    /// - `priority_of` allows you to resolve reduce-reduce conflicts, by giving reduce rules
-    ///   different "priorities". This takes the same parameters as `reduce_on`, so you can vary
-    ///   the priority based on the lookahead token. If there would be a reduce-reduce conflict
-    ///   between rules, but they have different priority, the one with higher priority is used.
-    pub fn lalr1<'a, FR, FO>(
-        &'a self,
+    /// # Panics
+    /// Panics if there are internal inconsistencies during table construction.
+    #[allow(clippy::too_many_lines)]
+    pub fn lalr1<FR, FO>(
+        &self,
         mut reduce_on: FR,
         mut priority_of: FO,
-    ) -> Result<LR1ParseTable<'a, T, N, A>, LR1Conflict<'a, T, N, A>>
+    ) -> Result<LR1ParseTable<'_, T, N, A>, LR1Conflict<'_, T, N, A>>
     where
         FR: FnMut(&Rhs<T, N, A>, Option<&T>) -> bool,
         FO: FnMut(&Rhs<T, N, A>, Option<&T>) -> i32,
@@ -417,7 +442,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
         let state_machine = self.lr0_state_machine();
         let extended = state_machine.extended_grammar();
         let first_sets = extended.first_sets();
-        let follow_sets = extended.follow_sets(first_sets);
+        let follow_sets = extended.follow_sets(&first_sets);
         let mut r = LR1ParseTable {
             states: state_machine
                 .states
@@ -431,8 +456,8 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
         };
 
         // add shifts
-        for (i, &(_, ref trans)) in state_machine.states.iter().enumerate() {
-            for (&sym, &target) in trans.iter() {
+        for (i, (_, trans)) in state_machine.states.iter().enumerate() {
+            for (&sym, &target) in trans {
                 match *sym {
                     Terminal(ref t) => {
                         let z = r.states[i].lookahead.insert(t, LRAction::Shift(target));
@@ -457,7 +482,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
             for &Rhs {
                 syms: _,
                 act: (end_state, rhs),
-            } in rhss.iter()
+            } in rhss
             {
                 for &&t in follow.iter().filter(|&&&t| reduce_on(rhs, Some(t))) {
                     match r.states[end_state].lookahead.entry(t) {
@@ -466,11 +491,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                         }
                         btree_map::Entry::Occupied(mut v) => {
                             match *v.get_mut() {
-                                LRAction::Reduce(l, r)
-                                    if l == lhs
-                                        && r as *const Rhs<T, N, A>
-                                            == rhs as *const Rhs<T, N, A> =>
-                                {
+                                LRAction::Reduce(l, r) if l == lhs && std::ptr::eq(r, rhs) => {
                                     // The cells match, so there's no conflict.
                                 }
                                 LRAction::Reduce(ref mut l, ref mut r) => {
@@ -512,17 +533,13 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 if eof && reduce_on(rhs, None) {
                     let state = &mut r.states[end_state];
                     if *lhs == self.start {
-                        match state.eof {
-                            Some(_) => unreachable!(),
-                            _ => (),
+                        if state.eof.is_some() {
+                            unreachable!()
                         }
                         state.eof = Some(LRAction::Accept);
                     } else {
                         match state.eof {
-                            Some(LRAction::Reduce(l, r))
-                                if l == lhs
-                                    && r as *const Rhs<T, N, A> == rhs as *const Rhs<T, N, A> =>
-                            {
+                            Some(LRAction::Reduce(l, r)) if l == lhs && std::ptr::eq(r, rhs) => {
                                 // no problem
                             }
                             Some(LRAction::Reduce(ref mut l, ref mut r)) => {
@@ -569,16 +586,20 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
     }
 }
 
+type ExtGrammar<'a, T, N, A> = Grammar<&'a T, (usize, &'a N), (usize, &'a Rhs<T, N, A>)>;
+type ExtRuleKey<'a, N> = (usize, &'a N);
+type ExtRuleVal<'a, T, N, A> = Vec<Rhs<&'a T, (usize, &'a N), (usize, &'a Rhs<T, N, A>)>>;
+
 impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
     /// Create an LALR(1) extended grammar, as described
-    /// [here](http://web.cs.dal.ca/~sjackson/lalr1.html).
-    pub fn extended_grammar(&self) -> Grammar<&'a T, (usize, &'a N), (usize, &'a Rhs<T, N, A>)> {
-        let mut r: BTreeMap<
-            (usize, &'a N),
-            Vec<Rhs<&'a T, (usize, &'a N), (usize, &'a Rhs<T, N, A>)>>,
-        > = BTreeMap::new();
-        for (ix, &(ref iset, _)) in self.states.iter().enumerate() {
-            for item in iset.items.iter() {
+    ///
+    /// # Panics
+    /// Panics if a transition is not found during grammar extension.
+    #[must_use]
+    pub fn extended_grammar(&self) -> ExtGrammar<'a, T, N, A> {
+        let mut r: BTreeMap<ExtRuleKey<'a, N>, ExtRuleVal<'a, T, N, A>> = BTreeMap::new();
+        for (ix, (iset, _)) in self.states.iter().enumerate() {
+            for item in &iset.items {
                 if item.pos == 0 {
                     let new_lhs = (ix, item.lhs);
                     let mut state = ix;
@@ -589,14 +610,15 @@ impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
                             .iter()
                             .map(|sym| {
                                 let old_st = state;
-                                state = *self.states[old_st].1.get(sym).unwrap();
+                                state = *self.states[old_st]
+                                    .1
+                                    .get(sym)
+                                    .expect("Transition not found in extended_grammar");
                                 match *sym {
                                     Terminal(ref t) => Terminal(t),
                                     Nonterminal(ref n) => {
                                         let nt = (old_st, n);
-                                        if let btree_map::Entry::Vacant(view) = r.entry(nt) {
-                                            view.insert(vec![]);
-                                        }
+                                        r.entry(nt).or_default();
                                         Nonterminal(nt)
                                     }
                                 }
@@ -604,7 +626,7 @@ impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
                             .collect(),
                         act: (state, item.rhs),
                     };
-                    r.entry(new_lhs).or_insert(vec![]).push(new_rhs);
+                    r.entry(new_lhs).or_default().push(new_rhs);
                 }
             }
         }
