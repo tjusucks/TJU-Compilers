@@ -30,7 +30,16 @@ impl Lexer {
     }
 
     pub fn tokenize(self, input: &str) -> impl Iterator<Item = Token<'_, Terminal>> {
-        let iterator = self.recognizer.into_lexer(input, 0);
-        iterator.chain(iter::once(Token::eof(input)))
+        let base_iter = self.recognizer.into_lexer(input, 0);
+        // Check for UNRECOGNIZED tokens and panic.
+        let inspected = base_iter.inspect(|token: &Token<'_, Terminal>| {
+            if token.kind.0.as_ref() == "<UNRECOGNIZED>" {
+                panic!(
+                    "Lexical error: unrecognized token {:?} at {}..{}",
+                    token.text, token.start, token.end
+                );
+            }
+        });
+        inspected.chain(iter::once(Token::eof(input)))
     }
 }

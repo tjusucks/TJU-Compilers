@@ -80,10 +80,9 @@ where
                 Some(LRAction::Accept) => {
                     return Ok(self.semantic_action.on_accept());
                 }
-                _ => panic!(
-                    "Failed to get action for state {} and token {:?}",
-                    state, token.kind
-                ),
+                _ => {
+                    return Err(self.semantic_action.on_error(token));
+                }
             }
         }
     }

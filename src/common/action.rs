@@ -11,6 +11,7 @@ pub trait Action {
     fn on_reduce(&mut self, non_terminal: &NonTerminal, rhs: &Rhs<Terminal, NonTerminal, ()>);
     fn on_shift(&mut self, token: Token<Terminal>);
     fn on_accept(&mut self) -> Self::ParseResult;
+    fn on_error(&mut self, token: Token<Terminal>) -> Self::ParseError;
 }
 
 pub struct DefaultAction {
@@ -61,5 +62,14 @@ impl Action for DefaultAction {
     fn on_accept(&mut self) -> Self::ParseResult {
         let children = std::mem::take(&mut self.node_stack);
         ParseTreeNode::non_terminal(self.start_symbol.clone(), children, Span::new(0, 0, 1, 1))
+    }
+
+    fn on_error(&mut self, token: Token<Terminal>) -> Self::ParseError {
+        // Build a span from the current token and return an error via Action
+        let span = Span::new(token.start, token.end, 1, token.start);
+        ParseError {
+            message: format!("Unexpected token: {:?}", token.kind),
+            span: Some(span),
+        }
     }
 }
