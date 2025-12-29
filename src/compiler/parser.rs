@@ -1,8 +1,9 @@
-use relex::{Token, TokenKind};
+use relex::TokenKind;
 
 use crate::common::action::Action;
 use crate::common::grammar::{LR1ParseTable, LRAction};
 use crate::common::symbol_table::{NonTerminal, Terminal};
+use crate::compiler::lexer::LocatedToken;
 
 pub struct Parser<'a, Action> {
     parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
@@ -39,20 +40,22 @@ where
     /// Returns an error if the parsing process encounters an unrecoverable parsing error.
     pub fn parse<I>(&mut self, mut iterator: I) -> Result<A::ParseResult, A::ParseError>
     where
-        I: Iterator<Item = Token<'a, Terminal>>,
+        I: Iterator<Item = LocatedToken<'a>>,
     {
         let parse_table = &self.parse_table;
         let mut state_stack = vec![0];
-        let mut token = iterator.next().expect("Input token stream is empty");
+        let mut located_token = iterator.next().expect("Input token stream is empty");
 
         loop {
             let state = *state_stack
                 .last()
                 .expect("State stack is empty during parsing");
-            let action = if token.kind.is_eof() {
+            let action = if located_token.token.kind.is_eof() {
                 parse_table.states[state].eof.as_ref()
             } else {
-                parse_table.states[state].lookahead.get(&token.kind)
+                parse_table.states[state]
+                    .lookahead
+                    .get(&located_token.token.kind)
             };
 
             match action {
@@ -72,8 +75,8 @@ where
                 }
                 Some(LRAction::Shift(next_state)) => {
                     state_stack.push(*next_state);
-                    self.semantic_action.on_shift(token);
-                    token = iterator
+                    self.semantic_action.on_shift(located_token.token);
+                    located_token = iterator
                         .next()
                         .expect("Unexpected end of input token stream");
                 }
@@ -81,7 +84,9 @@ where
                     return Ok(self.semantic_action.on_accept());
                 }
                 _ => {
-                    return Err(self.semantic_action.on_error(token));
+                    return Err(self
+                        .semantic_action
+                        .on_error(located_token.token, located_token.span));
                 }
             }
         }

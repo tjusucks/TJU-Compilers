@@ -1,13 +1,12 @@
-use relex::Token;
-
 use crate::common::symbol_table::Terminal;
+use crate::compiler::lexer::LocatedToken;
 
-pub struct Processor<I: Iterator<Item = Token<'static, Terminal>>> {
+pub struct Processor<'a, I: Iterator<Item = LocatedToken<'a>>> {
     iterator: I,
-    previous_token: Option<Token<'static, Terminal>>,
+    previous_token: Option<LocatedToken<'a>>,
 }
 
-impl<I: Iterator<Item = Token<'static, Terminal>>> Processor<I> {
+impl<'a, I: Iterator<Item = LocatedToken<'a>>> Processor<'a, I> {
     pub fn process(mut iterator: I) -> Self {
         let previous_token = iterator.next();
         Self {
@@ -17,20 +16,20 @@ impl<I: Iterator<Item = Token<'static, Terminal>>> Processor<I> {
     }
 }
 
-impl<I: Iterator<Item = Token<'static, Terminal>>> Iterator for Processor<I> {
-    type Item = Token<'static, Terminal>;
+impl<'a, I: Iterator<Item = LocatedToken<'a>>> Iterator for Processor<'a, I> {
+    type Item = LocatedToken<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         let token = self.iterator.next();
         if let Some(mut previous_token) = self.previous_token.take() {
             if let Some(ref current_token) = token {
-                if current_token.kind.0.as_ref() == "Equal"
-                    && previous_token.kind.0.as_ref() == "Identifier"
+                if current_token.token.kind.0.as_ref() == "Equal"
+                    && previous_token.token.kind.0.as_ref() == "Identifier"
                 {
-                    previous_token.kind = Terminal("LeftIdentifier".into());
-                } else if current_token.kind.0.as_ref() == "="
-                    && previous_token.kind.0.as_ref() == "IDENTIFIER"
+                    previous_token.token.kind = Terminal("LeftIdentifier".into());
+                } else if current_token.token.kind.0.as_ref() == "="
+                    && previous_token.token.kind.0.as_ref() == "IDENTIFIER"
                 {
-                    previous_token.kind = Terminal("LEFT_IDENTIFIER".into());
+                    previous_token.token.kind = Terminal("LEFT_IDENTIFIER".into());
                 }
             }
             self.previous_token = token;

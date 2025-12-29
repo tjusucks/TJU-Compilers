@@ -101,14 +101,6 @@ fn error_handing() {
     // Tokenize and parse the input.
     let tokens = lexer.tokenize(input);
     let processed = Processor::process(tokens);
-
-    for token in processed {
-        println!("{:?}", token);
-    }
-
-    let lexer = Lexer::new(token_rules);
-    let tokens = lexer.tokenize(input);
-    let processed = Processor::process(tokens);
     let mut result = parser.parse(processed).unwrap();
 
     // Build the lexer and parser based on the result.
@@ -123,6 +115,7 @@ fn error_handing() {
 
     // Test the generated lexer and parser.
     let test_input = r#"
+        @w = a
         @drop       =  10 whitespace | strings
     "#;
     let tokens = lexer.tokenize(test_input);

@@ -2,8 +2,15 @@ use std::iter;
 
 use relex::{Recognizer, RecognizerBuilder, Rule, Token};
 
+use crate::common::parse_tree::Span;
 use crate::common::symbol_table::Terminal;
 use crate::common::token_rules::TokenRules;
+
+/// A token with an attached source `Span` (start/end offsets plus line/column).
+pub struct LocatedToken<'a> {
+    pub token: Token<'a, Terminal>,
+    pub span: Span,
+}
 
 pub struct Lexer {
     recognizer: Recognizer<Terminal>,
@@ -29,17 +36,56 @@ impl Lexer {
         Self { recognizer }
     }
 
-    pub fn tokenize(self, input: &str) -> impl Iterator<Item = Token<'_, Terminal>> {
+    /// Compute (line, column) from byte offset.
+    fn compute_line_col(input: &str, offset: usize) -> (usize, usize) {
+        let end = offset.min(input.len());
+        let prefix = &input[..end];
+
+        // Number of newline characters gives the line index (1-based).
+        let line = prefix.chars().filter(|&c| c == '\n').count() + 1;
+
+        // Column = number of characters after the last newline in prefix + 1
+        let col = if let Some(last_newline_pos) = prefix.rfind('\n') {
+            prefix[last_newline_pos + 1..].chars().count() + 1
+        } else {
+            prefix.chars().count() + 1
+        };
+
+        (line, col)
+    }
+
+    pub fn tokenize(self, input: &str) -> impl Iterator<Item = LocatedToken<'_>> {
         let base_iter = self.recognizer.into_lexer(input, 0);
-        // Check for UNRECOGNIZED tokens and panic.
-        let inspected = base_iter.inspect(|token: &Token<'_, Terminal>| {
+
+        // Map tokens into LocatedToken and panic immediately on UNRECOGNIZED.
+        let mapped = base_iter.map(move |token: Token<'_, Terminal>| {
+            // Compute line/column based on the token start offset.
+            let (line, column) = Self::compute_line_col(input, token.start);
+            let span = Span::new(token.start, token.end, line, column);
+
             if token.kind.0.as_ref() == "<UNRECOGNIZED>" {
                 panic!(
-                    "Lexical error: unrecognized token {:?} at {}..{}",
-                    token.text, token.start, token.end
+                    "Lexical error: unrecognized token {:?} at input:{}:{}.",
+                    token.text, span.line, span.column,
                 );
             }
+
+            LocatedToken { token, span }
         });
-        inspected.chain(iter::once(Token::eof(input)))
+
+        // Append EOF token at the end.
+        let eof_token = {
+            // create eof token and span at end of input
+            let token = Token::eof(input);
+            let (line, column) = Self::compute_line_col(input, token.start);
+            let start = token.start;
+            let end = token.end;
+            LocatedToken {
+                token,
+                span: Span::new(start, end, line, column),
+            }
+        };
+
+        mapped.chain(iter::once(eof_token))
     }
 }

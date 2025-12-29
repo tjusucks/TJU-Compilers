@@ -439,9 +439,7 @@ impl Action for GeneratorAction {
         )
     }
 
-    fn on_error(&mut self, token: Token<Terminal>) -> Self::ParseError {
-        // Build a span from the current token and return an error via Action
-        let span = Span::new(token.start, token.end, 1, token.start);
+    fn on_error(&mut self, token: Token<Terminal>, span: Span) -> Self::ParseError {
         ParseError {
             message: format!("Unexpected token: {:?}", token.kind),
             span: Some(span),
