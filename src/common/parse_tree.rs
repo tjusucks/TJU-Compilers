@@ -126,7 +126,21 @@ impl Display for Symbol {
     }
 }
 
-impl fmt::Display for ParseTreeNode {
+impl Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(span) = self.span {
+            write!(
+                f,
+                "Parse Error at input:{}:{}, {}",
+                span.line, span.column, self.message
+            )
+        } else {
+            write!(f, "Parse Error: {}", self.message)
+        }
+    }
+}
+
+impl Display for ParseTreeNode {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_sexpr(
             node: &ParseTreeNode,

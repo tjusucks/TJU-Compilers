@@ -1,3 +1,4 @@
+use std::panic::catch_unwind;
 use std::sync::Arc;
 
 use rustcc::common::action::DefaultAction;
@@ -113,15 +114,22 @@ fn error_handing() {
         DefaultAction::new(result.grammar_rules.start_symbol),
     );
 
-    // Test the generated lexer and parser.
+    // Test the parser error handling.
     let test_input = r#"
-        @w = a
-        @drop       =  10 whitespace | strings
+        @drop       = whitespace | strings
     "#;
     let tokens = lexer.tokenize(test_input);
     let processed = Processor::process(tokens);
-    let tree = parser.parse(processed).unwrap();
-    println!("{}", tree);
+    let result = parser.parse(processed);
+    assert!(result.is_err());
+    match result {
+        Ok(parse_tree) => {
+            println!("Parse succeeded unexpectedly:\n{}", parse_tree);
+        }
+        Err(parse_error) => {
+            println!("{parse_error}");
+        }
+    }
 }
 
 fn process_rules(grammar_rules: &mut GrammarRules) {
