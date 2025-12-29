@@ -45,15 +45,19 @@ impl Lexer {
         let line = prefix.chars().filter(|&c| c == '\n').count() + 1;
 
         // Column = number of characters after the last newline in prefix + 1
-        let col = if let Some(last_newline_pos) = prefix.rfind('\n') {
-            prefix[last_newline_pos + 1..].chars().count() + 1
-        } else {
-            prefix.chars().count() + 1
-        };
+        let col = prefix.rfind('\n').map_or_else(
+            || prefix.chars().count() + 1,
+            |last_newline_pos| prefix[last_newline_pos + 1..].chars().count() + 1,
+        );
 
         (line, col)
     }
 
+    /// Tokenizes the input string and returns an iterator of LocatedToken.
+    ///
+    /// # Panics
+    ///
+    /// Panics when an unrecognized token is encountered.
     pub fn tokenize(self, input: &str) -> impl Iterator<Item = LocatedToken<'_>> {
         let base_iter = self.recognizer.into_lexer(input, 0);
 
@@ -63,12 +67,13 @@ impl Lexer {
             let (line, column) = Self::compute_line_col(input, token.start);
             let span = Span::new(token.start, token.end, line, column);
 
-            if token.kind.0.as_ref() == "<UNRECOGNIZED>" {
-                panic!(
-                    "Lexical error: unrecognized token {:?} at input:{}:{}.",
-                    token.text, span.line, span.column,
-                );
-            }
+            assert!(
+                token.kind.0.as_ref() != "<UNRECOGNIZED>",
+                "Lexical error: unrecognized token {:?} at input:{}:{}.",
+                token.text,
+                span.line,
+                span.column,
+            );
 
             LocatedToken { token, span }
         });

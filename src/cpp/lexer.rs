@@ -6,7 +6,7 @@ pub mod ffi {
         type BridgeToken;
 
         // Bind the C++ function.
-        #[must_use] 
+        #[must_use]
         fn tokenize(input: &str) -> UniquePtr<CxxVector<BridgeToken>>;
 
         // Expose the C++ getters to Rust.

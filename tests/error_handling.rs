@@ -1,4 +1,3 @@
-use std::panic::catch_unwind;
 use std::sync::Arc;
 
 use rustcc::common::action::DefaultAction;
