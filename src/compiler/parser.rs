@@ -6,7 +6,7 @@ use crate::common::symbol_table::{NonTerminal, Terminal};
 use crate::compiler::lexer::LocatedToken;
 
 pub struct Parser<'a, Action> {
-    parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
+    parse_table: &'a LR1ParseTable<'a, Terminal, NonTerminal, ()>,
     semantic_action: Action,
 }
 
@@ -15,7 +15,7 @@ where
     A: Action,
 {
     pub const fn new(
-        parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
+        parse_table: &'a LR1ParseTable<'a, Terminal, NonTerminal, ()>,
         semantic_action: A,
     ) -> Self {
         Self {
