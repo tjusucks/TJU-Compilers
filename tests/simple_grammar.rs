@@ -1,4 +1,5 @@
-use rustcc::common::action::DefaultAction;
+mod tac_action;
+
 use rustcc::common::parse_table::ParseTable;
 use rustcc::compiler::lexer::Lexer;
 use rustcc::compiler::parser::Parser;
@@ -7,6 +8,8 @@ use rustcc::generator::action::GeneratorAction;
 use rustcc::generator::grammar_rules::{grammar_rules, priority_of, reduce_on};
 use rustcc::generator::processor::Processor;
 use rustcc::generator::token_rules::token_rules;
+
+use crate::tac_action::TacAction;
 
 #[test]
 fn simple_grammar() {
@@ -24,8 +27,8 @@ fn simple_grammar() {
         expression = term expression_tail
 
         expression_tail = PLUS term expression_tail
-                       | MINUS term expression_tail
-                       | EPSILON
+                        | MINUS term expression_tail
+                        | EPSILON
 
         term = factor term_tail
 
@@ -73,16 +76,16 @@ fn simple_grammar() {
     let parse_table = ParseTable::new(&result.grammar_rules, reduce_on, priority_of);
     let mut parser = Parser::new(
         &parse_table.parse_table,
-        DefaultAction::new(result.grammar_rules.start_symbol),
+        TacAction::new("output.txt".to_string()),
     );
 
     // Test the generated lexer and parser.
     let test_input = r#"
         a + b * (c - 42) / d
+        c - 3 * x + (y / z)
     "#;
 
     let adapter = CppLexerAdapter;
     let tokens = adapter.tokenize(test_input);
-    let tree = parser.parse(tokens.into_iter()).unwrap();
-    println!("{}", tree);
+    parser.parse(tokens.into_iter()).unwrap();
 }
