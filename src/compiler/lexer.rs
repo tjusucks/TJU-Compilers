@@ -53,7 +53,7 @@ impl Lexer {
         (line, col)
     }
 
-    /// Tokenizes the input string and returns an iterator of LocatedToken.
+    /// Tokenizes the input string and returns an iterator of `LocatedToken`.
     ///
     /// # Panics
     ///
