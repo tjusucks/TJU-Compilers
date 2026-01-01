@@ -276,15 +276,14 @@ The key steps in the parse table generation include:
 - Creating state transitions based on grammar symbols
 
 ```rust
-impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
-    pub fn lr0_state_machine<'a>(&'a self) -> LR0StateMachine<'a, T, N, A> {
+pub fn lr0_state_machine<'a>(&'a self) -> LR0StateMachine<'a, T, N, A> {
     let mut state: S<'a, T, N, A> = S {
         states: vec![],
         item_sets: BTreeMap::new(),
         nubs: BTreeMap::new(),
     };
     let mut finished = 0;
-        state.complete_nub(
+    state.complete_nub(
         self,
         ItemSet {
             items: {
@@ -300,8 +299,8 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 r
             },
         },
-        );
-        while finished < state.states.len() {
+    );
+    while finished < state.states.len() {
         let mut next_nubs = BTreeMap::new();
         for item in &state.states[finished].0.items {
             if let Some((sym, next)) = advance(item) {
@@ -313,11 +312,10 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
             state.states[finished].1.insert(sym, ix);
         }
         finished += 1;
-        }
-        LR0StateMachine {
+    }
+    LR0StateMachine {
         states: state.states,
         start: &self.start,
-        }
     }
 }
 ```
@@ -325,45 +323,43 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
 **Extended Grammar Generation**: The `extended_grammar` method creates an extended LALR(1) grammar where each nonterminal includes its source state, enabling proper LALR(1) lookahead computation.
 
 ```rust
-impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
-    pub fn extended_grammar(&self) -> ExtGrammar<'a, T, N, A> {
-        let mut r: BTreeMap<ExtRuleKey<'a, N>, ExtRuleVal<'a, T, N, A>> = BTreeMap::new();
-        for (ix, (iset, _)) in self.states.iter().enumerate() {
-            for item in &iset.items {
-                if item.pos == 0 {
-                    let new_lhs = (ix, item.lhs);
-                    let mut state = ix;
-                    let new_rhs = Rhs {
-                        syms: item
-                            .rhs
-                            .syms
-                            .iter()
-                            .map(|sym| {
-                                let old_st = state;
-                                state = *self.states[old_st]
-                                    .1
-                                    .get(sym)
-                                    .expect("Transition not found in extended_grammar");
-                                match *sym {
-                                    Terminal(ref t) => Terminal(t),
-                                    Nonterminal(ref n) => {
-                                        let nt = (old_st, n);
-                                        r.entry(nt).or_default();
-                                        Nonterminal(nt)
-                                    }
+pub fn extended_grammar(&self) -> ExtGrammar<'a, T, N, A> {
+    let mut r: BTreeMap<ExtRuleKey<'a, N>, ExtRuleVal<'a, T, N, A>> = BTreeMap::new();
+    for (ix, (iset, _)) in self.states.iter().enumerate() {
+        for item in &iset.items {
+            if item.pos == 0 {
+                let new_lhs = (ix, item.lhs);
+                let mut state = ix;
+                let new_rhs = Rhs {
+                    syms: item
+                        .rhs
+                        .syms
+                        .iter()
+                        .map(|sym| {
+                            let old_st = state;
+                            state = *self.states[old_st]
+                                .1
+                                .get(sym)
+                                .expect("Transition not found in extended_grammar");
+                            match *sym {
+                                Terminal(ref t) => Terminal(t),
+                                Nonterminal(ref n) => {
+                                    let nt = (old_st, n);
+                                    r.entry(nt).or_default();
+                                    Nonterminal(nt)
                                 }
-                            })
-                            .collect(),
-                        act: (state, item.rhs),
-                    };
-                    r.entry(new_lhs).or_default().push(new_rhs);
-                }
+                            }
+                        })
+                        .collect(),
+                    act: (state, item.rhs),
+                };
+                r.entry(new_lhs).or_default().push(new_rhs);
             }
         }
-        Grammar {
-            rules: r,
-            start: (0, self.start),
-        }
+    }
+    Grammar {
+        rules: r,
+        start: (0, self.start),
     }
 }
 ```
@@ -374,7 +370,121 @@ impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
 - FOLLOW sets: For each nonterminal, determine which terminals can appear immediately after it in sentential forms.
 
 ```rust
+/// Compute the FIRST sets of the grammar.
+pub fn first_sets(&self) -> BTreeMap<&N, (BTreeSet<&T>, bool)> {
+    let mut r = BTreeMap::new();
+    for lhs in self.rules.keys() {
+        r.insert(lhs, RefCell::new((BTreeSet::new(), false)));
+    }
+    loop {
+        let mut changed = false;
 
+        // `self.rules` and `r` have the same order.
+        for ((lhs, rhses), (_, cell)) in self.rules.iter().zip(r.iter()) {
+            let mut cell = cell.borrow_mut();
+            'outer: for rhs in rhses {
+                for sym in &rhs.syms {
+                    match *sym {
+                        Terminal(ref t) => {
+                            if cell.0.insert(t) {
+                                changed = true;
+                            }
+                            continue 'outer;
+                        }
+                        Nonterminal(ref n) => {
+                            if n == lhs {
+                                // Refers to `lhs`, no need to add own set elements.
+                                if !cell.1 {
+                                    continue 'outer;
+                                }
+                            } else {
+                                let them = r
+                                    .get(n)
+                                    .expect("Nonterminal not found in first sets")
+                                    .borrow();
+                                for &t in &them.0 {
+                                    if cell.0.insert(t) {
+                                        changed = true;
+                                    }
+                                }
+                                if !them.1 {
+                                    // Stop if it's not nullable.
+                                    continue 'outer;
+                                }
+                            }
+                        }
+                    }
+                }
+                if !cell.1 {
+                    // If we got here, then we must be nullable.
+                    cell.1 = true;
+                    changed = true;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    r.into_iter().map(|(k, v)| (k, v.into_inner())).collect()
+}
+
+/// Compute the FOLLOW sets of the grammar.
+pub fn follow_sets<'a>(
+    &'a self,
+    first: &BTreeMap<&'a N, (BTreeSet<&'a T>, bool)>,
+) -> BTreeMap<&'a N, (BTreeSet<&'a T>, bool)> {
+    let mut r = BTreeMap::new();
+    for lhs in self.rules.keys() {
+        r.insert(lhs, (BTreeSet::new(), *lhs == self.start));
+    }
+    loop {
+        let mut changed = false;
+        for (lhs, rhses) in &self.rules {
+            for rhs in rhses {
+                let mut follow = r
+                    .get(lhs)
+                    .expect("Nonterminal not found in follow sets")
+                    .clone();
+                for sym in rhs.syms.iter().rev() {
+                    match *sym {
+                        Terminal(ref t) => {
+                            follow.0.clear();
+                            follow.1 = false;
+                            follow.0.insert(t);
+                        }
+                        Nonterminal(ref n) => {
+                            let s = r
+                                .get_mut(n)
+                                .expect("Nonterminal not found in follow sets update");
+                            for &t in &follow.0 {
+                                if s.0.insert(t) {
+                                    changed = true;
+                                }
+                            }
+                            if !s.1 && follow.1 {
+                                s.1 = true;
+                                changed = true;
+                            }
+                            let &(ref f, nullable) = first
+                                .get(n)
+                                .expect("Nonterminal not found in first sets lookup");
+                            if !nullable {
+                                follow.0.clear();
+                                follow.1 = false;
+                            }
+                            follow.0.extend(f.iter().copied());
+                        }
+                    }
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    r
+}
 ```
 
 **Parse Table Construction**: The algorithm populates the action and goto tables:
@@ -385,7 +495,145 @@ impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
 - **Goto transitions**: State transitions for nonterminals after reductions.
 
 ```rust
+// Initialize the parse table
+let mut r = LR1ParseTable {
+    states: state_machine
+        .states
+        .iter()
+        .map(|_| LR1State {
+            eof: None,
+            lookahead: BTreeMap::new(),
+            goto: BTreeMap::new(),
+        })
+        .collect(),
+};
 
+// Add shifts
+for (i, (_, trans)) in state_machine.states.iter().enumerate() {
+    for (&sym, &target) in trans {
+        match *sym {
+            Terminal(ref t) => {
+                let z = r.states[i].lookahead.insert(t, LRAction::Shift(target));
+                // Can't have conflicts yet
+                debug_assert!(z.is_none());
+            }
+            Nonterminal(ref n) => {
+                let z = r.states[i].goto.insert(n, target);
+                debug_assert!(z.is_none());
+            }
+        }
+    }
+}
+
+// Add reductions
+for ((&(start_state, lhs), rhss), (&&(s2, l2), &(ref follow, eof))) in
+    extended.rules.iter().zip(follow_sets.iter())
+{
+    debug_assert_eq!(start_state, s2);
+    debug_assert!(lhs == l2);
+
+    for &Rhs {
+        syms: _,
+        act: (end_state, rhs),
+    } in rhss
+    {
+        for &&t in follow.iter().filter(|&&&t| reduce_on(rhs, Some(t))) {
+            match r.states[end_state].lookahead.entry(t) {
+                btree_map::Entry::Vacant(v) => {
+                    v.insert(LRAction::Reduce(lhs, rhs));
+                }
+                btree_map::Entry::Occupied(mut v) => {
+                    match *v.get_mut() {
+                        LRAction::Reduce(l, r) if l == lhs && std::ptr::eq(r, rhs) => {
+                            // The cells match, so there's no conflict.
+                        }
+                        LRAction::Reduce(ref mut l, ref mut r) => {
+                            match priority_of(r, Some(t)).cmp(&priority_of(rhs, Some(t))) {
+                                cmp::Ordering::Greater => {
+                                    // `r` overrides `rhs` - do nothing.
+                                }
+                                cmp::Ordering::Less => {
+                                    // `rhs` overrides `r`.
+                                    *l = lhs;
+                                    *r = rhs;
+                                }
+                                cmp::Ordering::Equal => {
+                                    // Otherwise, we have a reduce/reduce conflict.
+                                    return Err(LR1Conflict::ReduceReduce {
+                                        state: state_machine.states[end_state].0.clone(),
+                                        token: Some(t),
+                                        r1: (*l, *r),
+                                        r2: (lhs, rhs),
+                                    });
+                                }
+                            }
+                        }
+                        LRAction::Shift(_) => {
+                            return Err(LR1Conflict::ShiftReduce {
+                                state: state_machine.states[end_state].0.clone(),
+                                token: Some(t),
+                                rule: (lhs, rhs),
+                            });
+                        }
+                        LRAction::Accept => {
+                            unreachable!();
+                        }
+                    }
+                }
+            }
+        }
+
+        if eof && reduce_on(rhs, None) {
+            let state = &mut r.states[end_state];
+            if *lhs == self.start {
+                if state.eof.is_some() {
+                    unreachable!()
+                }
+                state.eof = Some(LRAction::Accept);
+            } else {
+                match state.eof {
+                    Some(LRAction::Reduce(l, r)) if l == lhs && std::ptr::eq(r, rhs) => {
+                        // no problem
+                    }
+                    Some(LRAction::Reduce(ref mut l, ref mut r)) => {
+                        match priority_of(r, None).cmp(&priority_of(rhs, None)) {
+                            cmp::Ordering::Greater => {
+                                // `r` overrides `rhs` - do nothing.
+                            }
+                            cmp::Ordering::Less => {
+                                // `rhs` overrides `r`.
+                                *l = lhs;
+                                *r = rhs;
+                            }
+                            cmp::Ordering::Equal => {
+                                // We have a reduce/reduce conflict.
+                                return Err(LR1Conflict::ReduceReduce {
+                                    state: state_machine.states[end_state].0.clone(),
+                                    token: None,
+                                    r1: (*l, *r),
+                                    r2: (lhs, rhs),
+                                });
+                            }
+                        }
+                    }
+                    Some(LRAction::Shift(_)) => {
+                        return Err(LR1Conflict::ShiftReduce {
+                            state: state_machine.states[end_state].0.clone(),
+                            token: None,
+                            rule: (lhs, rhs),
+                        });
+                    }
+                    Some(LRAction::Accept) => {
+                        unreachable!();
+                    }
+                    None => {
+                        state.eof = Some(LRAction::Reduce(lhs, rhs));
+                    }
+                }
+            }
+        }
+    }
+}
 ```
 
 **Conflict Resolution**: The system detects and reports:
@@ -394,7 +642,31 @@ impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
 - **Reduce/Reduce conflicts**: When multiple reduction rules are applicable.
 
 ```rust
+// In the parse table construction, conflicts are detected during reduction:
+// Shift/Reduce conflict detection:
+LRAction::Shift(_) => {
+    return Err(LR1Conflict::ShiftReduce {
+        state: state_machine.states[end_state].0.clone(),
+        token: Some(t),
+        rule: (lhs, rhs),
+    });
+}
 
+// Reduce/Reduce conflict detection:
+cmp::Ordering::Equal => {
+    // Otherwise, we have a reduce/reduce conflict.
+    return Err(LR1Conflict::ReduceReduce {
+        state: state_machine.states[end_state].0.clone(),
+        token: Some(t),
+        r1: (*l, *r),
+        r2: (lhs, rhs),
+    });
+}
+
+// For EOF conflicts:
+match state.eof {
+    // ... similar conflict detection for EOF cases
+}
 ```
 
 ### Semantic Action for IR Generation
