@@ -3,10 +3,10 @@ use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, VecDeque, btree_map};
 use std::fmt::{self, Debug, Display};
 
-/// Type alias for LR(0) state machine states - each state has an item set and transitions
+/// Type alias for LR(0) state machine states.
 type LR0States<'a, T, N, A> = Vec<(ItemSet<'a, T, N, A>, BTreeMap<&'a Symbol<T, N>, usize>)>;
 
-/// Type alias for the result of advancing an item
+/// Type alias for the result of advancing an item.
 type AdvanceResult<'a, T, N, A> = Option<(&'a Symbol<T, N>, Item<'a, T, N, A>)>;
 
 pub use Symbol::*;
@@ -35,13 +35,14 @@ impl<T: Debug, N: Debug> Debug for Symbol<T, N> {
         }
     }
 }
+
 macro_rules! item {
     ($x:item) => {
         $x
     };
 }
-// Derive the {Partial,}{Eq,Ord} traits, based on the tuple implementations,
-// for the given fields.
+
+// Derive the {Partial,}{Eq,Ord} traits, based on the tuple implementations, for the given fields.
 macro_rules! comparators {
     ($t: ident($($p: tt)+) ($($s: ident),+) ($($f: ident),+)) => {
         item!(impl<$($p)+> PartialEq for $t<$($p)+> where $($s: PartialEq),+ {
@@ -116,8 +117,6 @@ pub struct Grammar<T, N, A> {
     /// The rules for each nonterminal.
     pub rules: BTreeMap<N, Vec<Rhs<T, N, A>>>,
     /// The starting state.
-    /// There must be exactly one rule of the form "`start` -> N", for some nonterminal N.
-    /// `start` must not be referred to elsewhere in the grammar.
     pub start: N,
 }
 
@@ -125,8 +124,6 @@ pub struct Grammar<T, N, A> {
 #[derive(Debug)]
 pub struct LR0StateMachine<'a, T: 'a, N: 'a, A: 'a> {
     /// A vector of states, each of which consists of an item set and a set of transitions.
-    ///
-    /// State 0 is the starting state.
     pub states: LR0States<'a, T, N, A>,
     /// The starting state of the associated context-free grammar.
     pub start: &'a N,
@@ -311,7 +308,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
         loop {
             let mut changed = false;
 
-            // the `zip` is okay because `self.rules` and `r` have the same order
+            // `self.rules` and `r` have the same order.
             for ((lhs, rhses), (_, cell)) in self.rules.iter().zip(r.iter()) {
                 let mut cell = cell.borrow_mut();
                 'outer: for rhs in rhses {
@@ -325,7 +322,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                             }
                             Nonterminal(ref n) => {
                                 if n == lhs {
-                                    // refers to `lhs`; no need to add own set elements
+                                    // Refers to `lhs`, no need to add own set elements.
                                     if !cell.1 {
                                         continue 'outer;
                                     }
@@ -340,7 +337,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                         }
                                     }
                                     if !them.1 {
-                                        // stop if it's not nullable
+                                        // Stop if it's not nullable.
                                         continue 'outer;
                                     }
                                 }
@@ -348,7 +345,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                         }
                     }
                     if !cell.1 {
-                        // if we got here, then we must be nullable
+                        // If we got here, then we must be nullable.
                         cell.1 = true;
                         changed = true;
                     }
@@ -430,14 +427,14 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
     /// # Panics
     /// Panics if there are internal inconsistencies during table construction.
     #[allow(clippy::too_many_lines)]
-    pub fn lalr1<FR, FO>(
+    pub fn lalr1<ReduceFn, PriorityFn>(
         &self,
-        mut reduce_on: FR,
-        mut priority_of: FO,
+        mut reduce_on: ReduceFn,
+        mut priority_of: PriorityFn,
     ) -> Result<LR1ParseTable<'_, T, N, A>, LR1Conflict<'_, T, N, A>>
     where
-        FR: FnMut(&Rhs<T, N, A>, Option<&T>) -> bool,
-        FO: FnMut(&Rhs<T, N, A>, Option<&T>) -> i32,
+        ReduceFn: FnMut(&Rhs<T, N, A>, Option<&T>) -> bool,
+        PriorityFn: FnMut(&Rhs<T, N, A>, Option<&T>) -> i32,
     {
         let state_machine = self.lr0_state_machine();
         let extended = state_machine.extended_grammar();
@@ -455,13 +452,13 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 .collect(),
         };
 
-        // add shifts
+        // Add shifts.
         for (i, (_, trans)) in state_machine.states.iter().enumerate() {
             for (&sym, &target) in trans {
                 match *sym {
                     Terminal(ref t) => {
                         let z = r.states[i].lookahead.insert(t, LRAction::Shift(target));
-                        // can't have conflicts yet
+                        // Can't have conflicts yet.
                         debug_assert!(z.is_none());
                     }
                     Nonterminal(ref n) => {
@@ -472,7 +469,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
             }
         }
 
-        // add reductions
+        // Add reductions.
         for ((&(start_state, lhs), rhss), (&&(s2, l2), &(ref follow, eof))) in
             extended.rules.iter().zip(follow_sets.iter())
         {
@@ -539,9 +536,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                         state.eof = Some(LRAction::Accept);
                     } else {
                         match state.eof {
-                            Some(LRAction::Reduce(l, r)) if l == lhs && std::ptr::eq(r, rhs) => {
-                                // no problem
-                            }
+                            Some(LRAction::Reduce(l, r)) if l == lhs && std::ptr::eq(r, rhs) => {}
                             Some(LRAction::Reduce(ref mut l, ref mut r)) => {
                                 match priority_of(r, None).cmp(&priority_of(rhs, None)) {
                                     cmp::Ordering::Greater => {
