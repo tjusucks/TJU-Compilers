@@ -212,7 +212,144 @@ The system employs Rust's ownership model for memory safety:
 - Proper cleanup of temporary objects during parsing
 - Integration with C++ memory management via CXX crate
 
-## 06. System Testing
+## 06. System Implementation
+
+### Context-Free Grammar Definitions
+
+RustCC uses standard context-free grammar definitions represented by the following core data structures:
+
+```rust
+/// A context-free grammar.
+#[derive(Debug)]
+pub struct Grammar<T, N, A> {
+    /// The rules for each nonterminal.
+    pub rules: BTreeMap<N, Vec<Rhs<T, N, A>>>,
+    /// The starting state.
+    pub start: N,
+}
+```
+
+Key components include:
+
+- **`T`**: Terminal symbol type (e.g., `Terminal` enum)
+- **`N`**: Nonterminal symbol type (e.g., `NonTerminal` enum)
+- **`rules`**: Mapping from nonterminals to their production rules.
+- **`Rhs<T, N, A>`**: Represents the right-hand side of a production rule, including symbols and associated semantic actions.
+- **`start`**: The designated start symbol of the grammar.
+
+### Parse Table Generation
+
+The LALR(1) parse table generation is the core of RustCC's compiler-compiler functionality. The process begins with the `Grammar::lalr1()` method which orchestrates the entire table construction:
+
+```rust
+pub fn lalr1<ReduceFn, PriorityFn>(
+    &self,
+    mut reduce_on: ReduceFn,
+    mut priority_of: PriorityFn,
+) -> Result<LR1ParseTable<'_, T, N, A>, LR1Conflict<'_, T, N, A>>
+where
+    ReduceFn: FnMut(&Rhs<T, N, A>, Option<&T>) -> bool,
+    PriorityFn: FnMut(&Rhs<T, N, A>, Option<&T>) -> i32,
+{
+    let state_machine = self.lr0_state_machine();
+    let extended = state_machine.extended_grammar();
+    let first_sets = extended.first_sets();
+    let follow_sets = extended.follow_sets(&first_sets);
+
+    // Initialize the parse table.
+    let mut r = LR1ParseTable { ... }
+
+    // Add shifts.
+    // ...
+
+    // Add reductions.
+    // ...
+}
+```
+
+The key steps in the parse table generation include:
+
+1. **LR(0) State Machine Construction**: The `lr0_state_machine` method creates the foundational LR(0) items and closure operations. This involves:
+   - Creating the initial item set with the augmented start rule
+   - Computing the closure of each state (adding all possible productions)
+   - Creating state transitions based on grammar symbols
+
+2. **Extended Grammar Generation**: The `extended_grammar` method creates an LALR(1) extended grammar as described in standard compiler construction algorithms. This creates an extended grammar where each nonterminal includes its source state, enabling proper LALR(1) lookahead computation.
+
+3. **FIRST and FOLLOW Set Computation**: These sets are computed using fixed-point iteration algorithms:
+   - FIRST sets: For each nonterminal, determine which terminals can appear first in derivations
+   - FOLLOW sets: For each nonterminal, determine which terminals can appear immediately after it in sentential forms
+
+4. **Parse Table Construction**: The algorithm populates the action and goto tables:
+   - **Shift actions**: When the parser should shift a token and move to a new state
+   - **Reduce actions**: When the parser should reduce by applying a grammar rule
+   - **Accept action**: When the parser recognizes the complete input
+   - **Goto transitions**: State transitions for nonterminals after reductions
+
+5. **Conflict Resolution**: The system detects and reports:
+   - **Shift/Reduce conflicts**: When a state allows both shifting and reducing
+   - **Reduce/Reduce conflicts**: When multiple reduction rules are applicable
+
+### Semantic Action for IR Generation
+
+The generator uses semantic actions to create an intermediate representation (IR) of the input grammar in a single pass. The key component is the `GeneratorResult` struct in the generator module:
+
+```rust
+pub struct GeneratorResult<'a> {
+    pub grammar: Grammar<Terminal, NonTerminal, ()>,
+    pub start: NonTerminal,
+    pub token_rules: Vec<TokenRule>,
+    pub parse_table: LR1ParseTable<'a, Terminal, NonTerminal, ()>,
+}
+```
+
+The generation process uses the `Processor` iterator to handle special cases such as distinguishing between left-hand side and right-hand side identifiers. This is crucial for proper semantic action handling during parsing.
+
+The semantic action system allows for one-pass IR generation by:
+
+1. **Token Processing**: The `Processor` handles token stream transformations, specifically identifying when an identifier appears on the left-hand side of an assignment versus the right-hand side.
+2. **Grammar Rule Construction**: Each grammar rule is processed with associated semantic actions that build the IR representation.
+3. **Symbol Table Management**: Terminal and non-terminal symbols are properly categorized and tracked for the parsing phase.
+
+### Left and Right Identifier Handling
+
+The `Processor` implementation in `src/generator/processor.rs` plays a critical role in resolving LALR(1) conflicts in BNF grammar definitions by distinguishing between left-hand side identifiers (LEFT_IDENTIFIER) and right-hand side identifiers (IDENTIFIER). This distinction is essential for resolving ambiguities between identifiers that appear in assignment contexts versus expression contexts.
+
+```rust
+impl<'a, I: Iterator<Item = LocatedToken<'a>>> Iterator for Processor<'a, I> {
+    type Item = LocatedToken<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let token = self.iterator.next();
+        if let Some(mut previous_token) = self.previous_token.take() {
+            if let Some(ref current_token) = token {
+                if current_token.token.kind.0.as_ref() == "Equal"
+                    && previous_token.token.kind.0.as_ref() == "Identifier"
+                {
+                    previous_token.token.kind = Terminal("LeftIdentifier".into());
+                } else if current_token.token.kind.0.as_ref() == "="
+                    && previous_token.token.kind.0.as_ref() == "IDENTIFIER"
+                {
+                    previous_token.token.kind = Terminal("LEFT_IDENTIFIER".into());
+                }
+            }
+            self.previous_token = token;
+            Some(previous_token)
+        } else {
+            None
+        }
+    }
+}
+```
+
+This implementation:
+
+1. **Looks ahead**: It examines the current token to determine the meaning of the previous token
+2. **Context-sensitive transformation**: Identifiers followed by `=` or `Equal` are transformed to `LEFT_IDENTIFIER` tokens
+3. **LALR conflict resolution**: By distinguishing left-hand side identifiers from right-hand side ones, the parser can resolve ambiguities in grammar rules that would otherwise cause shift/reduce conflicts
+
+This approach allows the grammar to properly handle assignment statements like `identifier = expression` while still allowing the same identifier to appear in expression contexts. The processor essentially creates a "context-sensitive" transformation that helps the LALR(1) parser make correct parsing decisions without requiring more powerful parsing algorithms.
+
+## 07. System Testing
 
 ### Test Case Design
 
@@ -339,7 +476,7 @@ test tokenize_cpp ... ok
 
 These tests collectively ensure that RustCC is robust, extensible, and ready for both research and practical compiler construction tasks.
 
-## 07. AI Assistant Usage
+## 08. AI Assistant Usage
 
 > Humans and AI systems working as a team can do more than either on their own. AI systems should initially aim at removing the drudgery of current tasks. -- _David Patterson_
 
