@@ -586,8 +586,7 @@ type ExtRuleKey<'a, N> = (usize, &'a N);
 type ExtRuleVal<'a, T, N, A> = Vec<Rhs<&'a T, (usize, &'a N), (usize, &'a Rhs<T, N, A>)>>;
 
 impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
-    /// Create an LALR(1) extended grammar, as described
-    ///
+    /// Create an LALR(1) extended grammar, add lookahead information to nonterminals and rules.
     /// # Panics
     /// Panics if a transition is not found during grammar extension.
     #[must_use]

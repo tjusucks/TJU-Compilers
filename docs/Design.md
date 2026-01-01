@@ -269,26 +269,133 @@ where
 
 The key steps in the parse table generation include:
 
-1. **LR(0) State Machine Construction**: The `lr0_state_machine` method creates the foundational LR(0) items and closure operations. This involves:
-   - Creating the initial item set with the augmented start rule
-   - Computing the closure of each state (adding all possible productions)
-   - Creating state transitions based on grammar symbols
+**LR(0) State Machine Construction**: The `lr0_state_machine` method creates the foundational LR(0) items and closure operations. This involves:
 
-2. **Extended Grammar Generation**: The `extended_grammar` method creates an LALR(1) extended grammar as described in standard compiler construction algorithms. This creates an extended grammar where each nonterminal includes its source state, enabling proper LALR(1) lookahead computation.
+- Creating the initial item set with the augmented start rule
+- Computing the closure of each state (adding all possible productions)
+- Creating state transitions based on grammar symbols
 
-3. **FIRST and FOLLOW Set Computation**: These sets are computed using fixed-point iteration algorithms:
-   - FIRST sets: For each nonterminal, determine which terminals can appear first in derivations
-   - FOLLOW sets: For each nonterminal, determine which terminals can appear immediately after it in sentential forms
+```rust
+impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
+    pub fn lr0_state_machine<'a>(&'a self) -> LR0StateMachine<'a, T, N, A> {
+    let mut state: S<'a, T, N, A> = S {
+        states: vec![],
+        item_sets: BTreeMap::new(),
+        nubs: BTreeMap::new(),
+    };
+    let mut finished = 0;
+        state.complete_nub(
+        self,
+        ItemSet {
+            items: {
+                let mut r = BTreeSet::new();
+                r.insert(Item {
+                    lhs: &self.start,
+                    rhs: &self
+                        .rules
+                        .get(&self.start)
+                        .expect("Start rule not found in grammar")[0],
+                    pos: 0,
+                });
+                r
+            },
+        },
+        );
+        while finished < state.states.len() {
+        let mut next_nubs = BTreeMap::new();
+        for item in &state.states[finished].0.items {
+            if let Some((sym, next)) = advance(item) {
+                next_nubs.entry(sym).or_insert(BTreeSet::new()).insert(next);
+            }
+        }
+        for (sym, items) in next_nubs {
+            let ix = state.complete_nub(self, ItemSet { items });
+            state.states[finished].1.insert(sym, ix);
+        }
+        finished += 1;
+        }
+        LR0StateMachine {
+        states: state.states,
+        start: &self.start,
+        }
+    }
+}
+```
 
-4. **Parse Table Construction**: The algorithm populates the action and goto tables:
-   - **Shift actions**: When the parser should shift a token and move to a new state
-   - **Reduce actions**: When the parser should reduce by applying a grammar rule
-   - **Accept action**: When the parser recognizes the complete input
-   - **Goto transitions**: State transitions for nonterminals after reductions
+**Extended Grammar Generation**: The `extended_grammar` method creates an extended LALR(1) grammar where each nonterminal includes its source state, enabling proper LALR(1) lookahead computation.
 
-5. **Conflict Resolution**: The system detects and reports:
-   - **Shift/Reduce conflicts**: When a state allows both shifting and reducing
-   - **Reduce/Reduce conflicts**: When multiple reduction rules are applicable
+```rust
+impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
+    pub fn extended_grammar(&self) -> ExtGrammar<'a, T, N, A> {
+        let mut r: BTreeMap<ExtRuleKey<'a, N>, ExtRuleVal<'a, T, N, A>> = BTreeMap::new();
+        for (ix, (iset, _)) in self.states.iter().enumerate() {
+            for item in &iset.items {
+                if item.pos == 0 {
+                    let new_lhs = (ix, item.lhs);
+                    let mut state = ix;
+                    let new_rhs = Rhs {
+                        syms: item
+                            .rhs
+                            .syms
+                            .iter()
+                            .map(|sym| {
+                                let old_st = state;
+                                state = *self.states[old_st]
+                                    .1
+                                    .get(sym)
+                                    .expect("Transition not found in extended_grammar");
+                                match *sym {
+                                    Terminal(ref t) => Terminal(t),
+                                    Nonterminal(ref n) => {
+                                        let nt = (old_st, n);
+                                        r.entry(nt).or_default();
+                                        Nonterminal(nt)
+                                    }
+                                }
+                            })
+                            .collect(),
+                        act: (state, item.rhs),
+                    };
+                    r.entry(new_lhs).or_default().push(new_rhs);
+                }
+            }
+        }
+        Grammar {
+            rules: r,
+            start: (0, self.start),
+        }
+    }
+}
+```
+
+**FIRST and FOLLOW Set Computation**: These sets are computed using fixed-point iteration algorithms:
+
+- FIRST sets: For each nonterminal, determine which terminals can appear first in derivations.
+- FOLLOW sets: For each nonterminal, determine which terminals can appear immediately after it in sentential forms.
+
+```rust
+
+```
+
+**Parse Table Construction**: The algorithm populates the action and goto tables:
+
+- **Shift actions**: When the parser should shift a token and move to a new state.
+- **Reduce actions**: When the parser should reduce by applying a grammar rule.
+- **Accept action**: When the parser recognizes the complete input.
+- **Goto transitions**: State transitions for nonterminals after reductions.
+
+```rust
+
+```
+
+**Conflict Resolution**: The system detects and reports:
+
+- **Shift/Reduce conflicts**: When a state allows both shifting and reducing.
+- **Reduce/Reduce conflicts**: When multiple reduction rules are applicable.
+
+```rust
+
+```
 
 ### Semantic Action for IR Generation
 
