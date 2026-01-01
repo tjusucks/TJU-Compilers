@@ -232,7 +232,7 @@ pub struct Grammar<T, N, A> {
 Key components include:
 
 - **`T`**: Terminal symbol type (e.g., `Terminal` enum)
-- **`N`**: Nonterminal symbol type (e.g., `NonTerminal` enum)
+- **`N`**: Non terminal symbol type (e.g., `NonTerminal` enum)
 - **`rules`**: Mapping from nonterminals to their production rules.
 - **`Rhs<T, N, A>`**: Represents the right-hand side of a production rule, including symbols and associated semantic actions.
 - **`start`**: The designated start symbol of the grammar.
@@ -343,10 +343,10 @@ pub fn extended_grammar(&self) -> ExtGrammar<'a, T, N, A> {
                                 .expect("Transition not found in extended_grammar");
                             match *sym {
                                 Terminal(ref t) => Terminal(t),
-                                Nonterminal(ref n) => {
+                                NonTerminal(ref n) => {
                                     let nt = (old_st, n);
                                     r.entry(nt).or_default();
-                                    Nonterminal(nt)
+                                    NonTerminal(nt)
                                 }
                             }
                         })
@@ -391,7 +391,7 @@ pub fn first_sets(&self) -> BTreeMap<&N, (BTreeSet<&T>, bool)> {
                             }
                             continue 'outer;
                         }
-                        Nonterminal(ref n) => {
+                        NonTerminal(ref n) => {
                             if n == lhs {
                                 // Refers to `lhs`, no need to add own set elements.
                                 if !cell.1 {
@@ -400,7 +400,7 @@ pub fn first_sets(&self) -> BTreeMap<&N, (BTreeSet<&T>, bool)> {
                             } else {
                                 let them = r
                                     .get(n)
-                                    .expect("Nonterminal not found in first sets")
+                                    .expect("NonTerminal not found in first sets")
                                     .borrow();
                                 for &t in &them.0 {
                                     if cell.0.insert(t) {
@@ -444,7 +444,7 @@ pub fn follow_sets<'a>(
             for rhs in rhses {
                 let mut follow = r
                     .get(lhs)
-                    .expect("Nonterminal not found in follow sets")
+                    .expect("NonTerminal not found in follow sets")
                     .clone();
                 for sym in rhs.syms.iter().rev() {
                     match *sym {
@@ -453,10 +453,10 @@ pub fn follow_sets<'a>(
                             follow.1 = false;
                             follow.0.insert(t);
                         }
-                        Nonterminal(ref n) => {
+                        NonTerminal(ref n) => {
                             let s = r
                                 .get_mut(n)
-                                .expect("Nonterminal not found in follow sets update");
+                                .expect("NonTerminal not found in follow sets update");
                             for &t in &follow.0 {
                                 if s.0.insert(t) {
                                     changed = true;
@@ -468,7 +468,7 @@ pub fn follow_sets<'a>(
                             }
                             let &(ref f, nullable) = first
                                 .get(n)
-                                .expect("Nonterminal not found in first sets lookup");
+                                .expect("NonTerminal not found in first sets lookup");
                             if !nullable {
                                 follow.0.clear();
                                 follow.1 = false;
@@ -517,7 +517,7 @@ for (i, (_, trans)) in state_machine.states.iter().enumerate() {
                 // Can't have conflicts yet
                 debug_assert!(z.is_none());
             }
-            Nonterminal(ref n) => {
+            NonTerminal(ref n) => {
                 let z = r.states[i].goto.insert(n, target);
                 debug_assert!(z.is_none());
             }

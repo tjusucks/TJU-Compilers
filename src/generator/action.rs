@@ -301,7 +301,7 @@ impl GeneratorAction {
                         let symbol = unquote(symbol);
                         if let Some(non_terminal) = self.symbol_table.get_non_terminal_id(symbol) {
                             lalr_symbols
-                                .push(crate::common::grammar::Symbol::Nonterminal(non_terminal));
+                                .push(crate::common::grammar::Symbol::NonTerminal(non_terminal));
                         } else if let Some(terminal) = self.symbol_table.get_terminal_id(symbol) {
                             lalr_symbols.push(crate::common::grammar::Symbol::Terminal(terminal));
                         } else {

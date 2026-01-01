@@ -54,15 +54,15 @@ pub fn grammar_rules() -> &'static GrammarRules {
         rules.push(Rule {
             non_terminal: grammar.clone(),
             rhs: vec![
-                Symbol::Nonterminal(grammar.clone()),
-                Symbol::Nonterminal(directive.clone()),
+                Symbol::NonTerminal(grammar.clone()),
+                Symbol::NonTerminal(directive.clone()),
             ],
         });
         rules.push(Rule {
             non_terminal: grammar.clone(),
             rhs: vec![
-                Symbol::Nonterminal(grammar.clone()),
-                Symbol::Nonterminal(rule.clone()),
+                Symbol::NonTerminal(grammar.clone()),
+                Symbol::NonTerminal(rule.clone()),
             ],
         });
         rules.push(Rule {
@@ -77,7 +77,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
                 Symbol::Terminal(at),
                 Symbol::Terminal(left_identifier.clone()),
                 Symbol::Terminal(equal.clone()),
-                Symbol::Nonterminal(value.clone()),
+                Symbol::NonTerminal(value.clone()),
             ],
         });
 
@@ -92,14 +92,14 @@ pub fn grammar_rules() -> &'static GrammarRules {
         });
         rules.push(Rule {
             non_terminal: value,
-            rhs: vec![Symbol::Nonterminal(list.clone())],
+            rhs: vec![Symbol::NonTerminal(list.clone())],
         });
 
         // list = IDENTIFIER { "," IDENTIFIER }
         rules.push(Rule {
             non_terminal: list.clone(),
             rhs: vec![
-                Symbol::Nonterminal(list.clone()),
+                Symbol::NonTerminal(list.clone()),
                 Symbol::Terminal(comma),
                 Symbol::Terminal(identifier.clone()),
             ],
@@ -115,7 +115,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             rhs: vec![
                 Symbol::Terminal(left_identifier),
                 Symbol::Terminal(equal),
-                Symbol::Nonterminal(expression.clone()),
+                Symbol::NonTerminal(expression.clone()),
             ],
         });
 
@@ -123,27 +123,27 @@ pub fn grammar_rules() -> &'static GrammarRules {
         rules.push(Rule {
             non_terminal: expression.clone(),
             rhs: vec![
-                Symbol::Nonterminal(expression.clone()),
+                Symbol::NonTerminal(expression.clone()),
                 Symbol::Terminal(pipe),
-                Symbol::Nonterminal(term.clone()),
+                Symbol::NonTerminal(term.clone()),
             ],
         });
         rules.push(Rule {
             non_terminal: expression.clone(),
-            rhs: vec![Symbol::Nonterminal(term.clone())],
+            rhs: vec![Symbol::NonTerminal(term.clone())],
         });
 
         // term = factor { factor } | EMPTY
         rules.push(Rule {
             non_terminal: term.clone(),
             rhs: vec![
-                Symbol::Nonterminal(term.clone()),
-                Symbol::Nonterminal(factor.clone()),
+                Symbol::NonTerminal(term.clone()),
+                Symbol::NonTerminal(factor.clone()),
             ],
         });
         rules.push(Rule {
             non_terminal: term.clone(),
-            rhs: vec![Symbol::Nonterminal(factor.clone())],
+            rhs: vec![Symbol::NonTerminal(factor.clone())],
         });
         rules.push(Rule {
             non_terminal: term,
@@ -154,24 +154,24 @@ pub fn grammar_rules() -> &'static GrammarRules {
         rules.push(Rule {
             non_terminal: factor.clone(),
             rhs: vec![
-                Symbol::Nonterminal(factor_repetition.clone()),
-                Symbol::Nonterminal(atom.clone()),
-                Symbol::Nonterminal(factor_repetition.clone()),
-                Symbol::Nonterminal(lookahead.clone()),
+                Symbol::NonTerminal(factor_repetition.clone()),
+                Symbol::NonTerminal(atom.clone()),
+                Symbol::NonTerminal(factor_repetition.clone()),
+                Symbol::NonTerminal(lookahead.clone()),
             ],
         });
         rules.push(Rule {
             non_terminal: factor.clone(),
             rhs: vec![
-                Symbol::Nonterminal(factor_repetition.clone()),
-                Symbol::Nonterminal(atom.clone()),
-                Symbol::Nonterminal(factor_repetition.clone()),
+                Symbol::NonTerminal(factor_repetition.clone()),
+                Symbol::NonTerminal(atom.clone()),
+                Symbol::NonTerminal(factor_repetition.clone()),
             ],
         });
         rules.push(Rule {
             non_terminal: factor_repetition.clone(),
             rhs: vec![
-                Symbol::Nonterminal(factor_repetition.clone()),
+                Symbol::NonTerminal(factor_repetition.clone()),
                 Symbol::Terminal(tilde),
             ],
         });
@@ -195,15 +195,15 @@ pub fn grammar_rules() -> &'static GrammarRules {
         });
         rules.push(Rule {
             non_terminal: atom.clone(),
-            rhs: vec![Symbol::Nonterminal(group.clone())],
+            rhs: vec![Symbol::NonTerminal(group.clone())],
         });
         rules.push(Rule {
             non_terminal: atom.clone(),
-            rhs: vec![Symbol::Nonterminal(optional.clone())],
+            rhs: vec![Symbol::NonTerminal(optional.clone())],
         });
         rules.push(Rule {
             non_terminal: atom,
-            rhs: vec![Symbol::Nonterminal(repetition.clone())],
+            rhs: vec![Symbol::NonTerminal(repetition.clone())],
         });
 
         // group = "(" expression ")"
@@ -211,7 +211,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             non_terminal: group,
             rhs: vec![
                 Symbol::Terminal(left_parentheses),
-                Symbol::Nonterminal(expression.clone()),
+                Symbol::NonTerminal(expression.clone()),
                 Symbol::Terminal(right_parentheses),
             ],
         });
@@ -221,7 +221,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             non_terminal: optional,
             rhs: vec![
                 Symbol::Terminal(left_bracket),
-                Symbol::Nonterminal(expression.clone()),
+                Symbol::NonTerminal(expression.clone()),
                 Symbol::Terminal(right_bracket),
             ],
         });
@@ -231,7 +231,7 @@ pub fn grammar_rules() -> &'static GrammarRules {
             non_terminal: repetition,
             rhs: vec![
                 Symbol::Terminal(left_brace),
-                Symbol::Nonterminal(expression),
+                Symbol::NonTerminal(expression),
                 Symbol::Terminal(right_brace),
             ],
         });
@@ -240,8 +240,8 @@ pub fn grammar_rules() -> &'static GrammarRules {
         rules.push(Rule {
             non_terminal: lookahead,
             rhs: vec![
-                Symbol::Nonterminal(lookahead_group.clone()),
-                Symbol::Nonterminal(factor),
+                Symbol::NonTerminal(lookahead_group.clone()),
+                Symbol::NonTerminal(factor),
             ],
         });
         rules.push(Rule {
@@ -273,9 +273,9 @@ pub fn reduce_on(rhs: &Rhs<Terminal, NonTerminal, ()>, lookahead: Option<&Termin
     // Greedy whitespace consumption.
     !matches!((&rhs.syms[..], lookahead), (
     [
-        Symbol::Nonterminal(nt1),
-        Symbol::Nonterminal(nt2),
-        Symbol::Nonterminal(nt3),
+        Symbol::NonTerminal(nt1),
+        Symbol::NonTerminal(nt2),
+        Symbol::NonTerminal(nt3),
     ],
     Some(terminal),
     ) if (

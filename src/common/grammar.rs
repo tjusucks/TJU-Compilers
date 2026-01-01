@@ -15,14 +15,14 @@ pub use Symbol::*;
 #[derive(Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub enum Symbol<T, N> {
     Terminal(T),
-    Nonterminal(N),
+    NonTerminal(N),
 }
 
 impl<T: Display, N: Display> Display for Symbol<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             Terminal(ref t) => t.fmt(f),
-            Nonterminal(ref n) => n.fmt(f),
+            NonTerminal(ref n) => n.fmt(f),
         }
     }
 }
@@ -31,7 +31,7 @@ impl<T: Debug, N: Debug> Debug for Symbol<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             Terminal(ref t) => t.fmt(f),
-            Nonterminal(ref n) => n.fmt(f),
+            NonTerminal(ref n) => n.fmt(f),
         }
     }
 }
@@ -221,7 +221,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 let mut completed: BTreeSet<_> = nub.items.clone();
                 let mut to_add: VecDeque<_> = nub.items.iter().cloned().collect();
                 while let Some(item) = to_add.pop_front() {
-                    if let Some(Nonterminal(n)) = item.rhs.syms.get(item.pos)
+                    if let Some(NonTerminal(n)) = item.rhs.syms.get(item.pos)
                         && let Some(rules) = grammar.rules.get(n)
                     {
                         for rhs in rules {
@@ -320,7 +320,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                 }
                                 continue 'outer;
                             }
-                            Nonterminal(ref n) => {
+                            NonTerminal(ref n) => {
                                 if n == lhs {
                                     // Refers to `lhs`, no need to add own set elements.
                                     if !cell.1 {
@@ -329,7 +329,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                 } else {
                                     let them = r
                                         .get(n)
-                                        .expect("Nonterminal not found in first sets")
+                                        .expect("NonTerminal not found in first sets")
                                         .borrow();
                                     for &t in &them.0 {
                                         if cell.0.insert(t) {
@@ -377,7 +377,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                 for rhs in rhses {
                     let mut follow = r
                         .get(lhs)
-                        .expect("Nonterminal not found in follow sets")
+                        .expect("NonTerminal not found in follow sets")
                         .clone();
                     for sym in rhs.syms.iter().rev() {
                         match *sym {
@@ -386,10 +386,10 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                 follow.1 = false;
                                 follow.0.insert(t);
                             }
-                            Nonterminal(ref n) => {
+                            NonTerminal(ref n) => {
                                 let s = r
                                     .get_mut(n)
-                                    .expect("Nonterminal not found in follow sets update");
+                                    .expect("NonTerminal not found in follow sets update");
                                 for &t in &follow.0 {
                                     if s.0.insert(t) {
                                         changed = true;
@@ -401,7 +401,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                                 }
                                 let &(ref f, nullable) = first
                                     .get(n)
-                                    .expect("Nonterminal not found in first sets lookup");
+                                    .expect("NonTerminal not found in first sets lookup");
                                 if !nullable {
                                     follow.0.clear();
                                     follow.1 = false;
@@ -461,7 +461,7 @@ impl<T: Ord, N: Ord, A> Grammar<T, N, A> {
                         // Can't have conflicts yet.
                         debug_assert!(z.is_none());
                     }
-                    Nonterminal(ref n) => {
+                    NonTerminal(ref n) => {
                         let z = r.states[i].goto.insert(n, target);
                         debug_assert!(z.is_none());
                     }
@@ -610,10 +610,10 @@ impl<'a, T: Ord, N: Ord, A> LR0StateMachine<'a, T, N, A> {
                                     .expect("Transition not found in extended_grammar");
                                 match *sym {
                                     Terminal(ref t) => Terminal(t),
-                                    Nonterminal(ref n) => {
+                                    NonTerminal(ref n) => {
                                         let nt = (old_st, n);
                                         r.entry(nt).or_default();
-                                        Nonterminal(nt)
+                                        NonTerminal(nt)
                                     }
                                 }
                             })
