@@ -12,6 +12,14 @@ While RustCC's parser and semantic action system are implemented in Rust, the le
 
 RustCC supports **BNF (Backus-Naur Form)** input similar to [DHParser](https://github.com/jecki/DHParser). While **EBNF (Extended BNF)** grammar syntax input can be parsed, EBNF grammar sugar, such as `{}` for repetition, `[]` for optionality, and `()` for grouping, is **not currently supported** in the generator logic. Users must manually desugar these constructs into standard BNF recursive rules (e.g., replacing `{ A }` with a recursive `list` rule).
 
+### In-Memory Generation
+
+The RustCC generator produces **in-memory lexer and parser objects**. After processing a grammar definition, users receive ready-to-use Rust objects for both lexical analysis and parsing, without the need for code generation or external build steps.
+
+### Default Action for Derivation Trees
+
+RustCC provides a default semantic action (`rustcc::common::action::DefaultAction`) implementation. When used, this action automatically constructs and returns a full derivation tree for the input, making it easy to inspect grammar structure, debug grammars, or bootstrap further compiler development.
+
 ### Error Handling
 
 The system provides robust error handling with precise source positioning:
@@ -154,3 +162,15 @@ test tokenize_cpp ... ok
 ```
 
 These tests collectively ensure that RustCC is robust, extensible, and ready for both research and practical compiler construction tasks.
+
+## 05. AI Assistant Usage
+
+> Humans and AI systems working as a team can do more than either on their own. AI systems should initially aim at removing the drudgery of current tasks. -- _David Patterson_
+
+AI tools were utilized throughout the development process to accelerate implementation and ensure quality:
+
+- **Code Generation**: AI assisted in writing boilerplate code, such as the `Action` trait and `ParseTable::new()` signatures.
+- **Mutable-iteration issues**: AI suggested practical, safe patterns to implement maps manipulation while iterating (`rustcc::common::grammar::Grammar::first_sets()`) avoiding common pitfalls with mutable iteration in Rust.
+- **Macro design**: AI helped design the macro pattern used to reduce repetitive trait impls for comparator/ordering logic (`comparators!`).
+- **Debugging**: AI helped identify lifetime issues with `LocatedToken` and `ParseTable` references, suggesting the use of `Box::leak` for static lifetime promotion in generated code and `OnceLock` for singleton patterns.
+- **Documentation**: AI synthesized the system design and implementation details into this documentation, ensuring consistency between the code and the design description.
