@@ -1,0 +1,25 @@
+# ===============================
+# Lexer Rules for Arithmetic Grammar
+# ===============================
+
+# Operators
+PLUS        \+
+MINUS       -
+MUL         \*
+DIV         /
+
+# Parentheses
+(      \(
+)      \)
+
+# Numbers
+NUMBER      [0-9]+
+
+# Variables (single letter)
+VARIABLE    [A-Za-z]
+
+# Whitespace (ignored)
+WHITESPACE  [ \t\r\n]+ IGNORE
+
+# Comments (ignored)
+COMMENT     \#.* IGNORE
