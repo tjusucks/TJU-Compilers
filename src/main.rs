@@ -101,7 +101,7 @@ fn main() {
     let lexer = Lexer::new(token_rules);
     let grammar_rules = grammar_rules();
     let parse_table = ParseTable::new(grammar_rules, reduce_on, priority_of);
-    let mut parser = Parser::new(parse_table.parse_table, GeneratorAction::default());
+    let mut parser = Parser::new(&parse_table.parse_table, GeneratorAction::default());
 
     // Tokenize and parse the input.
     let tokens = lexer.tokenize(input);
@@ -117,7 +117,7 @@ fn main() {
 
     let parse_table = ParseTable::new(&result.grammar_rules, reduce_on, priority_of);
     let mut parser = Parser::new(
-        parse_table.parse_table,
+        &parse_table.parse_table,
         DefaultAction::new(result.grammar_rules.start_symbol),
     );
 
