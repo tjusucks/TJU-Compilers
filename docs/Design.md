@@ -60,7 +60,7 @@ RustCC implements a rigorous LALR(1) table generation algorithm that detects con
 ├── src
 │   ├── common                        # Core data structures and utilities
 │   │   ├── action.rs                 # Semantic action trait definition
-│   │   ├── grammar.rs                # Grammar data structures and operations (LR(0), LR(1), LALR(1))
+│   │   ├── grammar.rs                # Grammar data structures and operations
 │   │   ├── grammar_rules.rs          # Grammar rule definitions and processing
 │   │   ├── mod.rs                    # Module exports for common components
 │   │   ├── parse_table.rs            # LALR(1) parse table structure and utilities
