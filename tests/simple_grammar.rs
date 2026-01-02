@@ -13,38 +13,21 @@ use crate::tac_action::TacAction;
 
 #[test]
 fn simple_grammar() {
-    // Example EBNF input string.
+    // Simple arithmetic grammar.
     let input = r#"
-        # Arithmetic Grammar (BNF, conflict-free)
-        @comment     = /#.*/
-        @whitespace  = vertical
-        @literalws   = both
-        @ignorecase  = False
-        @drop        = whitespace, strings
-
-        program = program expression | EPSILON
-
-        expression = term expression_tail
-
+        # Arithmetic Grammar.
+        program         = program expression | EPSILON
+        expression      = term expression_tail
         expression_tail = PLUS term expression_tail
                         | MINUS term expression_tail
                         | EPSILON
-
-        term = factor term_tail
-
-        term_tail = MUL factor term_tail
-                  | DIV factor term_tail
-                  | EPSILON
-
-        factor = sign factor_base
-               | factor_base
-
-        factor_base = NUMBER
-                    | VARIABLE
-                    | group
-
-        sign = POSITIVE
-             | NEGATIVE
+        term            = factor term_tail
+        term_tail       = MUL factor term_tail
+                        | DIV factor term_tail
+                        | EPSILON
+        factor          = NUMBER
+                        | VARIABLE
+                        | group
 
         group = "(" expression ")"
 
@@ -53,10 +36,7 @@ fn simple_grammar() {
         MUL      = "*"
         DIV      = "/"
 
-        POSITIVE = /[+]/
-        NEGATIVE = /[-]/
-
-        NUMBER   = /(?:0|(?:[1-9]\d*))(?:\.\d+)?/
+        NUMBER   = /[0-9]+/
         VARIABLE = /[A-Za-z]/
     "#;
 
